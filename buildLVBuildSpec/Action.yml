@@ -8,7 +8,5 @@ inputs:
     description: 'Build specification name'
     required: true
 runs:
-  using: 'composite'
   steps:
     - run: echo "Build project at ${{ inputs.project-path }} with spec ${{ inputs.build-spec }}"
-      shell: bash
