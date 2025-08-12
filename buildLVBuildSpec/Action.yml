@@ -20,12 +20,8 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: echo "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}"
-      shell: powershell
-    - run: echo "$env:LabVIEWPath"
-      shell: powershell
     - run: |
-        LabVIEWCLI `
+        $output = LabVIEWCLI `
           -OperationName ExecuteBuildSpec `
           -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
           -TargetName "${{ inputs.target }}" `
@@ -33,5 +29,10 @@ runs:
           -LabVIEWPath "$env:LabVIEWPath" `
           -PortNumber "${{ inputs.port-number }}" `
           -LogToConsole true `
-          -Verbosity Diagnostic
+          -Verbosity Minimal
+              $match = $output | Select-String -Pattern '\S+\.nipkg' | Select-Object -First 1`
+          if ($match) {`
+            $filePath = $match.Matches[0].Value`
+            echo "PACKAGE_PATH=$filePath" >> $env:GITHUB_ENV`
+          } 
       shell: powershell
