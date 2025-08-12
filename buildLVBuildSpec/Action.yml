@@ -16,10 +16,6 @@ inputs:
     description: 'Port number for LabVIEW CLI'
     required: false
     default: '3363'
-  log-path:
-    description: 'Path to store log files'
-    required: false
-    default: 'logs'
 
 runs:
   using: "composite"
@@ -33,7 +29,6 @@ runs:
           -TargetName "${{ inputs.target }}" `
           -BuildSpecName "${{ inputs.build-spec }}" `
           -PortNumber "${{ inputs.port-number }}" `
-          -LogFilePath "$env:GITHUB_WORKSPACE\${{ inputs.log-path }}\LabVIEWCLI_ExecuteBuildSpec.txt" `
           -LogToConsole true `
           -Verbosity Minimal
       shell: powershell
