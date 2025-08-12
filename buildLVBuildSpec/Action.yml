@@ -28,6 +28,7 @@ runs:
           -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
           -TargetName "${{ inputs.target }}" `
           -BuildSpecName "${{ inputs.build-spec }}" `
+          -LabVIEWPath "$env:LabVIEWPath" `
           -PortNumber "${{ inputs.port-number }}" `
           -LogToConsole true `
           -Verbosity Minimal
