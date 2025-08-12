@@ -25,7 +25,7 @@ runs:
   using: "composite"
   steps:
     - run: |
-        @LabVIEWCLI `
+        LabVIEWCLI `
           -OperationName ExecuteBuildSpec `
           -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
           -TargetName "${{ inputs.target }}" `
