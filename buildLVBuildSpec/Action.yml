@@ -1,5 +1,6 @@
 name: 'LabVIEW Build Action'
 description: 'Build LabVIEW project using CLI'
+
 inputs:
   project-path:
     description: 'Path to LabVIEW project'
@@ -19,8 +20,18 @@ inputs:
     description: 'Path to store log files'
     required: false
     default: 'logs'
+
 runs:
   using: "composite"
   steps:
-    - run: "@LabVIEWCLI -OperationName ExecuteBuildSpec -ProjectPath '$env:GITHUB_WORKSPACE\\${{ inputs.project-path }}' -TargetName '${{ inputs.target }}' -BuildSpecName '${{ inputs.build-spec }}' -PortNumber ${lv.port()} -LogFilePath '$env:GITHUB_WORKSPACE\\${logPath}\\LabVIEWCLI_ExecuteBuildSpec.txt' -LogToConsole true -Verbosity Minimal"
+    - run: |
+        @LabVIEWCLI `
+          -OperationName ExecuteBuildSpec `
+          -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
+          -TargetName "${{ inputs.target }}" `
+          -BuildSpecName "${{ inputs.build-spec }}" `
+          -PortNumber "${{ inputs.port-number }}" `
+          -LogFilePath "$env:GITHUB_WORKSPACE\${{ inputs.log-path }}\LabVIEWCLI_ExecuteBuildSpec.txt" `
+          -LogToConsole true `
+          -Verbosity Minimal
       shell: pwsh
