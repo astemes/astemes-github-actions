@@ -34,4 +34,4 @@ runs:
           -LogFilePath "$env:GITHUB_WORKSPACE\${{ inputs.log-path }}\LabVIEWCLI_ExecuteBuildSpec.txt" `
           -LogToConsole true `
           -Verbosity Minimal
-      shell: pwsh
+      shell: powershell
