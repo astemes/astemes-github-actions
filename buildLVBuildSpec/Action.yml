@@ -24,15 +24,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: echo "LabVIEWCLI `
-          -OperationName ExecuteBuildSpec `
-          -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
-          -TargetName "${{ inputs.target }}" `
-          -BuildSpecName "${{ inputs.build-spec }}" `
-          -PortNumber "${{ inputs.port-number }}" `
-          -LogFilePath "$env:GITHUB_WORKSPACE\${{ inputs.log-path }}\LabVIEWCLI_ExecuteBuildSpec.txt" `
-          -LogToConsole true `
-          -Verbosity Minimal"
+    - run: echo "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}"
       shell: powershell
     - run: |
         LabVIEWCLI `
