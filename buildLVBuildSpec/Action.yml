@@ -24,7 +24,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - echo "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}"
+    - echo $env:GITHUB_WORKSPACE\${{ inputs.project-path }}
     - run: |
         LabVIEWCLI `
           -OperationName ExecuteBuildSpec `
