@@ -7,8 +7,20 @@ inputs:
   build-spec:
     description: 'Build specification name'
     required: true
+  target:
+    description: 'Target name for the build'
+    required: false
+    default: 'My Computer'
+  port-number:
+    description: 'Port number for LabVIEW CLI'
+    required: false
+    default: '3365'
+  log-path:
+    description: 'Path to store log files'
+    required: false
+    default: 'logs'
 runs:
   using: "composite"
   steps:
-    - run: echo "Build project at ${{ inputs.project-path }} with spec ${{ inputs.build-spec }}"
+    - run: "@LabVIEWCLI -OperationName ExecuteBuildSpec -ProjectPath '$env:GITHUB_WORKSPACE\\${{ inputs.project-path }}' -TargetName '${{ inputs.target }}' -BuildSpecName '${{ inputs.build-spec }}' -PortNumber ${lv.port()} -LogFilePath '$env:GITHUB_WORKSPACE\\${logPath}\\LabVIEWCLI_ExecuteBuildSpec.txt' -LogToConsole true -Verbosity Minimal"
       shell: pwsh
