@@ -15,7 +15,7 @@ inputs:
   port-number:
     description: 'Port number for LabVIEW CLI'
     required: false
-    default: '3365'
+    default: '3363'
   log-path:
     description: 'Path to store log files'
     required: false
@@ -24,7 +24,15 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: echo "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}"
+    - run: echo LabVIEWCLI `
+          -OperationName ExecuteBuildSpec `
+          -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
+          -TargetName "${{ inputs.target }}" `
+          -BuildSpecName "${{ inputs.build-spec }}" `
+          -PortNumber "${{ inputs.port-number }}" `
+          -LogFilePath "$env:GITHUB_WORKSPACE\${{ inputs.log-path }}\LabVIEWCLI_ExecuteBuildSpec.txt" `
+          -LogToConsole true `
+          -Verbosity Minimal
       shell: powershell
     - run: |
         LabVIEWCLI `
@@ -37,3 +45,6 @@ runs:
           -LogToConsole true `
           -Verbosity Minimal
       shell: powershell
+
+
+LabVIEWCLI -OperationName ExecuteBuildSpec -ProjectPath "C:\actions-runner\_work\danfoss-i10-i11-driver\danfoss-i10-i11-driver\TestStand\Projects\139Z9605\139Z9605.lvproj" -TargetName "My Computer" -BuildSpecName "Deployment" -PortNumber "3363" -LogToConsole true -Verbosity Minimal
