@@ -37,6 +37,3 @@ runs:
           -LogToConsole true `
           -Verbosity Minimal
       shell: powershell
-
-
-LabVIEWCLI -OperationName ExecuteBuildSpec -ProjectPath "C:\actions-runner\_work\danfoss-i10-i11-driver\danfoss-i10-i11-driver\TestStand\Projects\139Z9605\139Z9605.lvproj" -TargetName "My Computer" -BuildSpecName "Deployment" -PortNumber "3363" -LogToConsole true -Verbosity Minimal
