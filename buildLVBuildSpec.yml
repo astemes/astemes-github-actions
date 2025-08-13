@@ -1,0 +1,33 @@
+name: 'LabVIEW Build'
+on:
+  workflow_call:
+    inputs:
+      project-path:
+        description: 'Path to LabVIEW project'
+        required: true
+      build-spec:
+        description: 'Build specification name'
+        required: true
+      target:
+        description: 'Target name for the build'
+        required: false
+        default: 'My Computer'
+      port-number:
+        description: 'Port number for LabVIEW CLI'
+        required: false
+        default: '3363'
+
+jobs:
+  using: "composite"
+  steps:
+    - run: |
+        LabVIEWCLI `
+          -OperationName ExecuteBuildSpec `
+          -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
+          -TargetName "${{ inputs.target }}" `
+          -BuildSpecName "${{ inputs.build-spec }}" `
+          -LabVIEWPath "$env:LabVIEWPath" `
+          -PortNumber "${{ inputs.port-number }}" `
+          -LogToConsole true `
+          -Verbosity Diagnostic
+      shell: powershell
