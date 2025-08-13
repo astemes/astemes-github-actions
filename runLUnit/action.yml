@@ -13,7 +13,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-      - run: mkdir -p $env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}
+      - run: mkdir "%GITHUB_WORKSPACE%\${{ inputs.log-dir-path }}"
         shell: cmd
       - run: |
           LabVIEWCLI `
