@@ -1,12 +1,13 @@
-on:
-  workflow_call:
-    inputs:
-      config-path:
-        required: true
-        type: string
+name: 'LabVIEW Build Action'
+description: 'Build LabVIEW project using CLI'
 
-jobs:
+inputs:
+  project-path:
+    description: 'Path to LabVIEW project'
+    required: true
+
+runs:
   using: "composite"
   steps:
-    - run: echo "Running LabVIEW Build with config at ${{ inputs.config-path }}"
+    - run: echo "Building LabVIEW project at ${{ inputs.project-path }}"
       shell: powershell
