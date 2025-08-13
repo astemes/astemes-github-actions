@@ -30,6 +30,12 @@ runs:
             -ClearIndex TRUE `
             -Verbosity Diagnostic
         shell: powershell
+      - run: |
+          $file = "$env:GITHUB_WORKSPACE\logs\LabVIEWCLI_LUnit.xml"
+          $xml = Get-Content $file
+          $xml = $xml -replace '<testsuite>', '<testsuite name="LUnit Tests" tests="1" failures="1">'
+          Set-Content $file $xml
+        shell: powershell
       - uses: dorny/test-reporter@v1
         if: always()
         with:
