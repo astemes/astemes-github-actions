@@ -34,5 +34,5 @@ runs:
         if: always()
         with:
           name: LUnit Tests
-          path: ${{github.workspace}}\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml
+          path: ${{ inputs.log-dir-path }}/*.xml
           reporter: java-junit
