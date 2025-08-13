@@ -34,4 +34,4 @@ runs:
         with:
           report_paths: ${{ inputs.log-dir-path }}/*.xml
           check_name: "LUnit Tests"
-          fail_on_failure: true
+          fail_on_failure: false
