@@ -1,0 +1,12 @@
+on:
+  workflow_call:
+    inputs:
+      config-path:
+        required: true
+        type: string
+
+jobs:
+  using: "composite"
+  steps:
+    - run: echo "Running LabVIEW Build with config at ${{ inputs.config-path }}"
+      shell: powershell
