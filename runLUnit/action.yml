@@ -24,7 +24,7 @@ runs:
             -PortNumber "$env:LabVIEWPort" `
             -ReportPath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
             -LogToConsole true `
-            -LogFilePath c:\temp\ `
+            -LogFilePath c:\temp\lvlog.txt `
             -ClearIndex TRUE `
             -Verbosity Diagnostic
         shell: powershell
