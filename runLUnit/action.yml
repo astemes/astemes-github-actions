@@ -22,7 +22,7 @@ runs:
             -TestRunners 1 `
             -LabVIEWPath "$env:LabVIEWPath" `
             -PortNumber "$env:LabVIEWPort" `
-            -ReportPath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.txt" `
+            -ReportPath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
             -LogToConsole true `
             -ClearIndex TRUE `
             -Verbosity Minimal
