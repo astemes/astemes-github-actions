@@ -18,18 +18,18 @@ runs:
       - run: |
           LabVIEWCLI `
             -OperationName LUnit `
-            -ProjectPath "%GITHUB_WORKSPACE%\${{ inputs.project-path }}" `
+            -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
             -TestRunners 1 `
             -LabVIEWPath "$env:LabVIEWPath" `
             -PortNumber "$env:LabVIEWPort" `
-            -ReportPath "%GITHUB_WORKSPACE%\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
+            -ReportPath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
             -LogToConsole true `
             -ClearIndex TRUE `
             -Verbosity Minimal
-        shell: cmd
+        shell: powershell
       - uses: dorny/test-reporter@v1
         if: always()
         with:
           name: LUnit Tests
-          path: ${{ inputs.log-dir-path }}/*.xml
+          path: $env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}/*.xml
           reporter: java-junit
