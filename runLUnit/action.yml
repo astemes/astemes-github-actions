@@ -24,8 +24,9 @@ runs:
             -PortNumber "$env:LabVIEWPort" `
             -ReportPath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
             -LogToConsole true `
+            -LogFilePath c:\temp\ `
             -ClearIndex TRUE `
-            -Verbosity Minimal
+            -Verbosity Diagnostic
         shell: powershell
       - uses: dorny/test-reporter@v1
         if: always()
