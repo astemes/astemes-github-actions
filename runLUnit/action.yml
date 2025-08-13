@@ -22,12 +22,13 @@ runs:
             -TestRunners 1 `
             -LabVIEWPath "$env:LabVIEWPath" `
             -PortNumber "$env:LabVIEWPort" `
-            -LogFilePath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.txt" `
+            -ReportPath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.txt" `
             -LogToConsole true `
-            -Verbosity Diagnostic
+            -ClearIndex TRUE `
+            -Verbosity Minimal
         shell: powershell
       - uses: dorny/test-reporter@v1
-        if: always() # Publish even if tests fail
+        if: always()
         with:
           name: LUnit Tests
           path: ${{ inputs.log-dir-path }}/*.xml
