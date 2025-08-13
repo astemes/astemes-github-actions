@@ -5,9 +5,21 @@ inputs:
   project-path:
     description: 'Path to LabVIEW project'
     required: true
+  log-dir-path:
+    description: 'Log output directory'
+    required: false
+    default: 'logs'
 
 runs:
   using: "composite"
   steps:
-    - run: echo "Building LabVIEW project at ${{ inputs.project-path }}"
-      shell: powershell
+      - run: |
+          LabVIEWCLI `
+            -OperationName LUnit `
+            -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
+            -TestRunners 1 `
+            -LabVIEWPath "$env:LabVIEWPath" `
+            -PortNumber "$env:LabVIEWPort" `
+            -LogFilePath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.txt"
+            -LogToConsole true `
+            -Verbosity Diagnostic
