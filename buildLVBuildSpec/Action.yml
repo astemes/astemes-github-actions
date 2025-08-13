@@ -1,23 +1,23 @@
-name: 'LabVIEW Build Action'
-description: 'Build LabVIEW project using CLI'
+name: 'LabVIEW Build'
+on:
+  workflow_call:
+    inputs:
+      project-path:
+        description: 'Path to LabVIEW project'
+        required: true
+      build-spec:
+        description: 'Build specification name'
+        required: true
+      target:
+        description: 'Target name for the build'
+        required: false
+        default: 'My Computer'
+      port-number:
+        description: 'Port number for LabVIEW CLI'
+        required: false
+        default: '3363'
 
-inputs:
-  project-path:
-    description: 'Path to LabVIEW project'
-    required: true
-  build-spec:
-    description: 'Build specification name'
-    required: true
-  target:
-    description: 'Target name for the build'
-    required: false
-    default: 'My Computer'
-  port-number:
-    description: 'Port number for LabVIEW CLI'
-    required: false
-    default: '3363'
-
-runs:
+jobs:
   using: "composite"
   steps:
     - run: |
