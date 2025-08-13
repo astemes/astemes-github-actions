@@ -13,6 +13,8 @@ inputs:
 runs:
   using: "composite"
   steps:
+      - run: mkdir -p "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}"
+        shell: powershell
       - run: |
           LabVIEWCLI `
             -OperationName LUnit `
