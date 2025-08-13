@@ -1,5 +1,5 @@
-name: 'LabVIEW Build Action'
-description: 'Build LabVIEW project using CLI'
+name: 'LUnit Test Action'
+description: 'Runs all LUnit tests in LabVIEW project using LUnit CLI'
 
 inputs:
   project-path:
@@ -26,3 +26,9 @@ runs:
             -LogToConsole true `
             -Verbosity Diagnostic
         shell: powershell
+      - uses: dorny/test-reporter@v1
+        if: always() # Publish even if tests fail
+        with:
+          name: LUnit Tests
+          path: ${{ inputs.log-dir-path }}/*.xml
+          reporter: java-junit
