@@ -30,8 +30,9 @@ runs:
             -ClearIndex TRUE `
             -Verbosity Diagnostic
         shell: powershell
-      - uses: mikepenz/action-junit-report@v4
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v1
         with:
-          report_paths: ${{ inputs.log-dir-path }}/*.xml
-          check_name: "LUnit Tests"
-          fail_on_failure: true
+          name: LUnit Tests
+          path: logs/LabVIEWCLI_LUnit.xml
+          reporter: junit
