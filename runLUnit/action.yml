@@ -31,8 +31,9 @@ runs:
             -Verbosity Diagnostic
         shell: powershell
       - name: Publish Test Report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
+        if: ${{ !cancelled() }}
         with:
           name: LUnit Tests
           path: logs/LabVIEWCLI_LUnit.xml
-          reporter: junit
+          reporter: java-junit
