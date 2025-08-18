@@ -30,7 +30,7 @@ runs:
           ./.github/actions/astemes-github-actions/mkdocs_builder/mkdocs_builder.py `
           --docs_path "$env:GITHUB_WORKSPACE\${{ inputs.docs-directory }}" `
           --site_name "${{ inputs.project-title }}" `
-          --repo_url "${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}" `
+          --repo_url "https://${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}" `
           --author "${{ inputs.author }}" `
           --initial_release "${{ inputs.initial-release }}"
       shell: powershell
