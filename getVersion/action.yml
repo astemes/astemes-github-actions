@@ -2,10 +2,6 @@ name: Get Version
 
 on:
   workflow_call:
-    outputs:
-      version:
-        description: 'The extracted version from the tag'
-        value: ${{ steps.extract_version.outputs.version }}
 
 jobs:
   extract:
