@@ -36,3 +36,4 @@ runs:
       shell: powershell
     - run: python -m mkdocs build
       shell: powershell
+    - run: python -m mkdocs gh-deploy --force
