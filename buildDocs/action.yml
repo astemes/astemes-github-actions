@@ -41,6 +41,3 @@ runs:
         git config --global user.name "GitHub Actions" `
         git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
       shell: powershell
-    - name: deploy GH Pages
-      run: python -m mkdocs gh-deploy --force
-      shell: powershell
