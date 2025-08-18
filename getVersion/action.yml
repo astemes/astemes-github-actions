@@ -2,6 +2,10 @@ name: Get Version
 
 on:
   workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
 
 jobs:
   extract:
@@ -10,10 +14,9 @@ jobs:
       version: ${{ steps.extract_version.outputs.version }}
     steps:
       - name: Extract version from tag
-        if: startsWith(github.ref, 'refs/tags/')
         id: extract_version
         shell: powershell
         run: |
-          $version = $env:GITHUB_REF -replace '^refs/tags/v',''
+          $version = '${{ inputs.tag }}' -replace '^v',''
           Write-Host "Version is $version"
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
