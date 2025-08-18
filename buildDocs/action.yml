@@ -41,8 +41,6 @@ runs:
         git config --global user.name "GitHub Actions"
       shell: powershell
     - name: deploy GH Pages
-      env:
-        GH_TOKEN: ${{ secrets.GH_PAT }}
       run: python -m mkdocs gh-deploy --force
       shell: powershell
       
