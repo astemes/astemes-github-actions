@@ -34,3 +34,5 @@ runs:
           --author "${{ inputs.author }}" `
           --initial_release "${{ inputs.initial-release }}"
       shell: powershell
+    - run: python -m mkdocs build
+      shell: powershell
