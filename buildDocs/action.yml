@@ -19,14 +19,11 @@ runs:
   using: "composite"
   steps:
   
-    - run: |
-        python -m venv .venv
+    - run: python -m venv .venv
       shell: powershell
-    - run: |
-        .venv\scripts\activate
+    - run: .venv\scripts\activate
       shell: powershell
-    - run: |
-        python -m pip install -r ./.github/actions/astemes-github-actions/mkdocs_builder/requirements.txt
+    - run: python -m pip install -r ./.github/actions/astemes-github-actions/mkdocs_builder/requirements.txt
       shell: powershell
     - run: |
         python `
