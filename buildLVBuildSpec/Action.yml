@@ -12,10 +12,6 @@ inputs:
     description: 'Target name for the build'
     required: false
     default: 'My Computer'
-  port-number:
-    description: 'Port number for LabVIEW CLI'
-    required: false
-    default: '3363'
 
 runs:
   using: "composite"
@@ -27,7 +23,7 @@ runs:
           -TargetName "${{ inputs.target }}" `
           -BuildSpecName "${{ inputs.build-spec }}" `
           -LabVIEWPath "$env:LabVIEWPath" `
-          -PortNumber "${{ inputs.port-number }}" `
+          -PortNumber "$env:LabVIEWPort" `
           -LogToConsole true `
           -Verbosity Diagnostic
       shell: powershell

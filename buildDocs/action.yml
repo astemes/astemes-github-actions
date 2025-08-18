@@ -1,0 +1,29 @@
+name: 'mkdocs Build Action'
+description: 'Build mkdocs documentation'
+
+inputs:
+  project-title:
+    description: 'Title of project'
+    required: true
+  author:
+    description: 'Author of documentation'
+    required: true
+  initial-release:
+    description: 'Year of first release'
+    required: true
+  docs-directory:
+    description: 'Input directory containing documentation'
+    required: false
+    default: 'docs'
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        python `
+          ./.github/actions/astemes-github-actions/mkdocs_builder/mkdocs_builder.py `
+          --docs_path "$env:GITHUB_WORKSPACE\${{ inputs.docs-directory }}" `
+          --site_name "${{ inputs.project-title }}" `
+          --repo_url "${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}" `
+          --author "${{ inputs.author }}" `
+          --initial_release "${{ inputs.initial-release }}"
+      shell: powershell
