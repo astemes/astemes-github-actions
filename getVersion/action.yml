@@ -17,6 +17,6 @@ runs:
       id: extract_version
       shell: powershell
       run: |
-        $version = "${{ inputs.tag }}" -replace '^v',''
+        $version = "${{ inputs.tag }}" -replace '^refs/tags/v',''
         Write-Host "Version is $version"
         "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
