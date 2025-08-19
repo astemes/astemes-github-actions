@@ -1,11 +1,6 @@
 name: "Get Version"
 description: "Extract version from a git tag (removes leading v)"
 
-inputs:
-  tag:
-    description: "The git tag (e.g. v1.2.3)"
-    required: true
-
 outputs:
   version:
     description: "The extracted version string"
