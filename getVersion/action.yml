@@ -10,8 +10,6 @@ on:
 jobs:
   extract:
     runs-on: self-hosted
-    outputs:
-      version: ${{ steps.extract_version.outputs.version }}
     steps:
       - name: Extract version from tag
         id: extract_version
