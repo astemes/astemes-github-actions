@@ -1,0 +1,28 @@
+name: 'LabVIEW Build Action'
+description: 'Build LabVIEW project using CLI'
+
+inputs:
+  vipb-path:
+    description: 'Path to package build specification'
+    required: true
+  lv-version:
+    description: 'Version of LabVIEW to build for'
+    required: true
+  pkg-version:
+    description: 'Version to use for package'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        LabVIEWCLI `
+          -OperationName BuildVIP `
+          -VIPBPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}"
+          -Version "${{ inputs.pkg-version }}" `
+          -LabVIEWVersion ${{ inputs.lv-version }} `
+          -LabVIEWPath "$env:LabVIEWPath" `
+          -PortNumber "$env:LabVIEWPort" `
+          -LogToConsole true `
+          -Verbosity Minimal
+      shell: powershell
