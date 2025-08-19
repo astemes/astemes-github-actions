@@ -15,7 +15,7 @@ runs:
   steps:
     - name: Extract version
       id: extract_version
-      shell: pwsh
+      shell: powershell
       run: |
         $version = "${{ inputs.tag }}" -replace '^v',''
         Write-Host "Version is $version"
