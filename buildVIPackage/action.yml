@@ -18,10 +18,10 @@ runs:
     - run: |
         LabVIEWCLI `
           -OperationName BuildVIP `
-          -LabVIEWPath "$env:LabVIEWPath" `
           -VIPBPath "$env:GITHUB_WORKSPACE\${{ inputs.vipb-path }}" `
           -LabVIEWVersion ${{ inputs.lv-version }} `
           -Version "${{ inputs.pkg-version }}" `
+          -LabVIEWPath "$env:LabVIEWPath" `
           -PortNumber "$env:LabVIEWPort" `
           -LogToConsole true `
           -Verbosity Minimal
