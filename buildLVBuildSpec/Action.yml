@@ -25,5 +25,5 @@ runs:
           -LabVIEWPath "$env:LabVIEWPath" `
           -PortNumber "$env:LabVIEWPort" `
           -LogToConsole true `
-          -Verbosity Diagnostic
+          -Verbosity Minimal
       shell: powershell
