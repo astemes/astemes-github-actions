@@ -9,6 +9,7 @@ inputs:
 outputs:
   version:
     description: "The extracted version string"
+    value: ${{ steps.extract_version.outputs.version }}
 
 runs:
   using: "composite"
