@@ -18,7 +18,7 @@ runs:
     - run: |
         LabVIEWCLI `
           -OperationName BuildVIP `
-          -VIPBPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}"
+          -VIPBPath "$env:GITHUB_WORKSPACE\${{ inputs.vipb-path }}"
           -Version "${{ inputs.pkg-version }}" `
           -LabVIEWVersion ${{ inputs.lv-version }} `
           -LabVIEWPath "$env:LabVIEWPath" `
