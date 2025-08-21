@@ -11,7 +11,6 @@ runs:
   steps:
     - name: Release file
       uses: softprops/action-gh-release@v1
-      shell: powershell
       with:
         tag_name: ${{ github.ref_name }}
         files: ${{ inputs.file-path }}
