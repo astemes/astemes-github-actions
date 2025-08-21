@@ -9,12 +9,17 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: 'echo "${{ inputs.file-path }}"'
+    - id: normalize-path
+      run: |
+        $normalizedPath = "${{ inputs.file-path }}" -replace '\\', '/'
+        Write-Host "Original path: ${{ inputs.file-path }}"
+        Write-Host "Normalized path: $normalizedPath"
+        "normalized-path=$normalizedPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       shell: powershell
     - name: Release file
       uses: softprops/action-gh-release@v1
       if: github.ref_type == 'tag'
       with:
         tag_name: ${{ github.ref_name }}
-        files: ${{ inputs.file-path }}
+        files: ${{ steps.normalize-path.outputs.normalized-path }}
         prerelease: true
