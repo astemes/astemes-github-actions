@@ -33,7 +33,7 @@ runs:
         Write-Host $output
 
         # Parse the .vip path from the line "Operation output: ..."
-        $vipPath = ($output | Select-String -Pattern 'Operation output:\s*(\S+\.vip)' | ForEach-Object {
+        $vipPath = ($output -join "`n" | Select-String -Pattern '(\S+\.vip)' | ForEach-Object {
             $_.Matches[0].Groups[1].Value
         })
 
