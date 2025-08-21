@@ -1,0 +1,17 @@
+name: "Release File"
+description: "Publishes a file to a github release"
+
+inputs:
+  file-path:
+    description: "Path to the file to release"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Release file
+      uses: softprops/action-gh-release@v1
+      shell: powershell
+      with:
+        tag_name: ${{ github.ref_name }}
+        files: ${{ inputs.file-path }}
