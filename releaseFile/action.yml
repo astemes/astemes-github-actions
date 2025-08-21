@@ -9,10 +9,12 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: "echo ${{ inputs.file-path }}"
+    - run: 'echo "${{ inputs.file-path }}"'
       shell: powershell
     - name: Release file
       uses: softprops/action-gh-release@v1
+      if: github.ref_type == 'tag'
       with:
         tag_name: ${{ github.ref_name }}
         files: ${{ inputs.file-path }}
+        prerelease: true
