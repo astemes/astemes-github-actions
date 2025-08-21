@@ -20,11 +20,11 @@ runs:
       - run: |
           LabVIEWCLI `
             -OperationName LUnit `
-            -ProjectPath $env:GITHUB_WORKSPACE\${{ inputs.project-path }} `
+            -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}"" `
             -TestRunners 1 `
             -LabVIEWPath $env:LabVIEWPath `
             -PortNumber $env:LabVIEWPort `
-            -ReportPath $env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml `
+            -ReportPath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
             -LogToConsole true `
             -ClearIndex TRUE `
             -Verbosity Diagnostic
