@@ -19,8 +19,8 @@ runs:
   using: "composite"
   steps:
     - id: build-vip
-    - run: |
-        LabVIEWCLI `
+      run: |
+        $output = LabVIEWCLI `
           -OperationName BuildVIP `
           -VIPBPath "$env:GITHUB_WORKSPACE\${{ inputs.vipb-path }}" `
           -LabVIEWVersion ${{ inputs.lv-version }} `
