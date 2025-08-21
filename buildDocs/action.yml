@@ -22,11 +22,11 @@ runs:
       shell: powershell
     - run: .venv\scripts\activate
       shell: powershell
-    - run: python -m pip install -r ".github\actions\astemes-github-actions\mkdocs_builder\requirements.txt"
+    - run: python -m pip install -r ".github\actions\mkdocs_builder\requirements.txt"
       shell: powershell
     - run: |
         python `
-          ./.github/actions/astemes-github-actions/mkdocs_builder/mkdocs_builder.py `
+          ./.github/actions/mkdocs_builder/mkdocs_builder.py `
           --docs_path "$env:GITHUB_WORKSPACE\${{ inputs.docs-directory }}" `
           --site_name "${{ inputs.project-title }}" `
           --repo_url "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY" `
