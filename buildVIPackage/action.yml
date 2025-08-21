@@ -12,9 +12,9 @@ inputs:
     description: 'Version to use for package'
     required: false
 outputs:
-  vip-file:
+  vip-path:
     description: 'Path to built VIP file'
-    value: ${{ steps.build-vip.outputs.vip-path }}
+    value: ${{ steps.build-vip.outputs['vip-path'] }}
 runs:
   using: "composite"
   steps:
