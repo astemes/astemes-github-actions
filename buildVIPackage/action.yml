@@ -11,10 +11,14 @@ inputs:
   pkg-version:
     description: 'Version to use for package'
     required: false
-
+outputs:
+  vip-file:
+    description: 'Path to built VIP file'
+    value: ${{ steps.build-vip.outputs.random-number }}
 runs:
   using: "composite"
   steps:
+    - id: build-vip
     - run: |
         LabVIEWCLI `
           -OperationName BuildVIP `
@@ -24,5 +28,22 @@ runs:
           -LabVIEWPath "$env:LabVIEWPath" `
           -PortNumber "$env:LabVIEWPort" `
           -LogToConsole true `
-          -Verbosity Minimal
+          -Verbosity Minimal 2>&1
+        Write-Host "LabVIEWCLI raw output:"
+        Write-Host $output
+
+        # Parse the .vip path from the line "Operation output: ..."
+        $vipPath = ($output | Select-String -Pattern 'Operation output:\s*(.+\.vip)' | ForEach-Object {
+          $_.Matches[0].Groups[1].Value
+        })
+
+        if (-not $vipPath) {
+          Write-Error "Failed to parse VIP file path from output"
+          exit 1
+        }
+
+        Write-Host "Extracted VIP path: $vipPath"
+
+        # Set output for later steps
+        "vip-path=$vipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       shell: powershell
