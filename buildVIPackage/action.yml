@@ -14,7 +14,7 @@ inputs:
 outputs:
   vip-file:
     description: 'Path to built VIP file'
-    value: ${{ steps.build-vip.outputs.random-number }}
+    value: ${{ steps.build-vip.outputs.vip-path }}
 runs:
   using: "composite"
   steps:
