@@ -23,7 +23,7 @@ runs:
         if ("${{ inputs.pkg-version }}" -ne "") {
           $args += "--version `"${{ inputs.pkg-version }}`""
         }
-        $cmd = "g-cli vipb --timeout 300000 -- " + ($args -join " ")
+        $cmd = "g-cli --timeout 300000 vipb -- " + ($args -join " ")
         $output = Invoke-Expression $cmd
         Write-Host "GCLI raw output:"
         Write-Host $output
