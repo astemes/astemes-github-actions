@@ -1,0 +1,30 @@
+name: 'LabVIEW Build Action'
+description: 'Build LabVIEW project using CLI'
+
+inputs:
+  project-path:
+    description: 'Path to LabVIEW project'
+    required: true
+  build-spec:
+    description: 'Build specification name'
+    required: true
+  target:
+    description: 'Target name for the build'
+    required: false
+    default: 'My Computer'
+  version:
+    description: 'Version to apply to the build'
+    required: false
+    default: '0.0.0.0'
+
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        g-cli lvbuildspec -- `
+          --project "${{ inputs.project-path }}" `
+          --target "${{ inputs.target }}" `
+          --buildspec "${{ inputs.build-spec }}" `
+          $(if ("${{ inputs.version }}") { "--version `"$("${{ inputs.version }}")`"" }) `
+          --no-clean
+      shell: powershell
