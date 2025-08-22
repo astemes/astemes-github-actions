@@ -17,7 +17,7 @@ runs:
         shell: cmd
       - run: |
           g-cli lunit -- `
-          -r "${{ inputs.log-dir-path }}\GCLI_LUnit.xml" `
+          --report "${{ inputs.log-dir-path }}\GCLI_LUnit.xml" `
           "${{ inputs.project-path }}"
         shell: powershell
       - name: Publish Test Report
