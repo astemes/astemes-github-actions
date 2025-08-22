@@ -18,7 +18,8 @@ runs:
       - run: |
           g-cli lunit -- `
           --report "${{ inputs.log-dir-path }}\GCLI_LUnit.xml" `
-          "${{ inputs.project-path }}"
+          "${{ inputs.project-path }}" `
+          "--timeout 300000"
         shell: powershell
       - name: Publish Test Report
         uses: astemes/test-reporter@v2

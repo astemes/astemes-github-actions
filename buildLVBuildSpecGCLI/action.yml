@@ -32,6 +32,7 @@ runs:
           "--target `"${{ inputs.target }}`""
           "--buildspec `"${{ inputs.build-spec }}`""
           "--no-clean"
+          "--timeout 300000"
         )
 
         if ("${{ inputs.version }}" -ne "") {

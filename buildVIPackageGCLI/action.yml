@@ -19,6 +19,7 @@ runs:
       run: |
         $args = @(
           "--buildspec `"${{ inputs.vipb-path }}`""
+          "--timeout 300000"
         )
         if ("${{ inputs.pkg-version }}" -ne "") {
           $args += "--version `"${{ inputs.pkg-version }}`""
