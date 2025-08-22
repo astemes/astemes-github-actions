@@ -15,13 +15,13 @@ inputs:
   version:
     description: 'Version to apply to the build'
     required: false
-  outputs:
-    exe-path:
-      description: 'Path to built exe file'
-      value: ${{ steps.exec-buildspec.outputs.exe-path }}
-    nipkg-path:
-      description: 'Path to built nipkg file'
-      value: ${{ steps.exec-buildspec.outputs.nipkg-path }}
+outputs:
+  exe-path:
+    description: 'Path to built exe file'
+    value: ${{ steps.exec-buildspec.outputs.exe-path }}
+  nipkg-path:
+    description: 'Path to built nipkg file'
+    value: ${{ steps.exec-buildspec.outputs.nipkg-path }}
 runs:
   using: "composite"
   steps:
