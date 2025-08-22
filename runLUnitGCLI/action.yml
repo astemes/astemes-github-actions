@@ -21,7 +21,7 @@ runs:
           "${{ inputs.project-path }}"
         shell: powershell
       - name: Publish Test Report
-        uses: dorny/test-reporter@v2
+        uses: astemes/test-reporter@v2
         if: ${{ !cancelled() }}
         with:
           name: LUnit Tests
