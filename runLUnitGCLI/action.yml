@@ -16,16 +16,9 @@ runs:
       - run: if not exist "%GITHUB_WORKSPACE%\${{ inputs.log-dir-path }}" mkdir "%GITHUB_WORKSPACE%\${{ inputs.log-dir-path }}"
         shell: cmd
       - run: |
-          LabVIEWCLI `
-            -OperationName LUnit `
-            -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
-            -TestRunners 1 `
-            -LabVIEWPath $env:LabVIEWPath `
-            -PortNumber $env:LabVIEWPort `
-            -ReportPath "$env:GITHUB_WORKSPACE\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
-            -LogToConsole true `
-            -ClearIndex TRUE `
-            -Verbosity Diagnostic
+          g-cli lunit -- `
+          -r "${{ inputs.log-dir-path }}\GCLI_LUnit.xml" `
+          "${{ inputs.project-path }}"
         shell: powershell
       - name: Publish Test Report
         uses: dorny/test-reporter@v2
