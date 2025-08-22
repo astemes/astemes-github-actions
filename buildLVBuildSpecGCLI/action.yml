@@ -15,11 +15,18 @@ inputs:
   version:
     description: 'Version to apply to the build'
     required: false
-
+  outputs:
+    exe-path:
+      description: 'Path to built exe file'
+      value: ${{ steps.exec-buildspec.outputs.exe-path }}
+    nipkg-path:
+      description: 'Path to built nipkg file'
+      value: ${{ steps.exec-buildspec.outputs.nipkg-path }}
 runs:
   using: "composite"
   steps:
-    - run: |
+    - id: exec-buildspec
+      run: |
         $args = @(
           "--project `"${{ inputs.project-path }}`""
           "--target `"${{ inputs.target }}`""
@@ -33,5 +40,19 @@ runs:
 
         $cmd = "g-cli lvbuildspec -- " + ($args -join " ")
         Write-Host "Running: $cmd"
-        Invoke-Expression $cmd
+        $output = Invoke-Expression $cmd
+        Write-Host "GCLI raw output:"
+        Write-Host $output
+        $exePath = ($output -join "`n" | Select-String -Pattern '(\S+\.exe)' | ForEach-Object {
+            $_.Matches[0].Groups[1].Value
+        })
+        $nipkgPath = ($output -join "`n" | Select-String -Pattern '(\S+\.nipkg)' | ForEach-Object {
+            $_.Matches[0].Groups[1].Value
+        })
+
+        Write-Host "Extracted exe path: $exePath"
+        Write-Host "Extracted nipkg path: $nipkgPath"
+
+        "exe-path=$exePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "nipkg-path=$nipkgPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       shell: powershell
