@@ -20,7 +20,7 @@ runs:
         $args = @(
           "--buildspec `"${{ inputs.vipb-path }}`""
         )
-        if ("${{ inputs.version }}" -ne "") {
+        if ("${{ inputs.pkg-version }}" -ne "") {
           $args += "--version `"${{ inputs.pkg-version }}`""
         }
         $cmd = "g-cli vipb -- " + ($args -join " ")
