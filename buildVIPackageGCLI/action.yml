@@ -19,12 +19,11 @@ runs:
       run: |
         $args = @(
           "--buildspec `"${{ inputs.vipb-path }}`""
-          "--timeout 300000"
         )
         if ("${{ inputs.pkg-version }}" -ne "") {
           $args += "--version `"${{ inputs.pkg-version }}`""
         }
-        $cmd = "g-cli vipb -- " + ($args -join " ")
+        $cmd = "g-cli vipb --timeout 300000 -- " + ($args -join " ")
         $output = Invoke-Expression $cmd
         Write-Host "GCLI raw output:"
         Write-Host $output

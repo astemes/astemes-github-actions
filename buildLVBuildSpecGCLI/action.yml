@@ -32,14 +32,13 @@ runs:
           "--target `"${{ inputs.target }}`""
           "--buildspec `"${{ inputs.build-spec }}`""
           "--no-clean"
-          "--timeout 300000"
         )
 
         if ("${{ inputs.version }}" -ne "") {
           $args += "--version `"${{ inputs.version }}`""
         }
 
-        $cmd = "g-cli lvbuildspec -- " + ($args -join " ")
+        $cmd = "g-cli lvbuildspec --timeout 300000 -- " + ($args -join " ")
         Write-Host "Running: $cmd"
         $output = Invoke-Expression $cmd
         Write-Host "GCLI raw output:"

@@ -16,7 +16,7 @@ runs:
       - run: if not exist "%GITHUB_WORKSPACE%\${{ inputs.log-dir-path }}" mkdir "%GITHUB_WORKSPACE%\${{ inputs.log-dir-path }}"
         shell: cmd
       - run: |
-          g-cli lunit -- `
+          g-cli lunit --timeout 300000 -- `
           --report "${{ inputs.log-dir-path }}\GCLI_LUnit.xml" `
           "${{ inputs.project-path }}" `
           "--timeout 300000"
