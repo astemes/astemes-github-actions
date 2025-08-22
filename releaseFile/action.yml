@@ -17,7 +17,7 @@ runs:
         "normalized-path=$normalizedPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       shell: powershell
     - name: Release file
-      uses: softprops/action-gh-release@v1
+      uses: astemes/action-gh-release@v1
       if: github.ref_type == 'tag'
       with:
         tag_name: ${{ github.ref_name }}
