@@ -21,15 +21,17 @@ runs:
   steps:
     - run: |
         $args = @(
-          "--project", "${{ inputs.project-path }}"
-          "--target", "${{ inputs.target }}"
-          "--buildspec", "${{ inputs.build-spec }}"
+          "--project `"${{ inputs.project-path }}`""
+          "--target `"${{ inputs.target }}`""
+          "--buildspec `"${{ inputs.build-spec }}`""
           "--no-clean"
         )
-        
+
         if ("${{ inputs.version }}" -ne "") {
-          $args += @("--version", "${{ inputs.version }}")
+          $args += "--version `"${{ inputs.version }}`""
         }
 
-        g-cli lvbuildspec @args
+        $cmd = "g-cli lvbuildspec -- " + ($args -join " ")
+        Write-Host "Running: $cmd"
+        Invoke-Expression $cmd
       shell: powershell
