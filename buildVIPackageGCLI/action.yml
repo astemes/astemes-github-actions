@@ -1,0 +1,45 @@
+name: 'LabVIEW Build Action'
+description: 'Build LabVIEW project using CLI'
+
+inputs:
+  vipb-path:
+    description: 'Path to package build specification'
+    required: true
+  pkg-version:
+    description: 'Version to use for package'
+    required: false
+outputs:
+  vip-path:
+    description: 'Path to built VIP file'
+    value: ${{ steps.build-vip.outputs.vip-path }}
+runs:
+  using: "composite"
+  steps:
+    - id: build-vip
+      run: |
+        $args = @(
+          "--buildspec `"${{ inputs.vipb-path }}`""
+        )
+        if ("${{ inputs.version }}" -ne "") {
+          $args += "--version `"${{ inputs.version }}`""
+        }
+        $cmd = "g-cli vipb -- " + ($args -join " ")
+        $output = Invoke-Expression $cmd
+        Write-Host "GCLI raw output:"
+        Write-Host $output
+
+        # Parse the .vip path from the line "Operation output: ..."
+        $vipPath = ($output -join "`n" | Select-String -Pattern '(\S+\.vip)' | ForEach-Object {
+            $_.Matches[0].Groups[1].Value
+        })
+
+        if (-not $vipPath) {
+          Write-Error "Failed to parse VIP file path from output"
+          exit 1
+        }
+
+        Write-Host "Extracted VIP path: $vipPath"
+
+        # Set output for later steps
+        "vip-path=$vipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+      shell: powershell
