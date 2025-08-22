@@ -21,7 +21,7 @@ runs:
           "--buildspec `"${{ inputs.vipb-path }}`""
         )
         if ("${{ inputs.version }}" -ne "") {
-          $args += "--version `"${{ inputs.version }}`""
+          $args += "--version `"${{ inputs.pkg-version }}`""
         }
         $cmd = "g-cli vipb -- " + ($args -join " ")
         $output = Invoke-Expression $cmd
