@@ -20,10 +20,16 @@ runs:
   using: "composite"
   steps:
     - run: |
-        g-cli lvbuildspec -- `
-          --project "${{ inputs.project-path }}" `
-          --target "${{ inputs.target }}" `
-          --buildspec "${{ inputs.build-spec }}" `
-          $(if ("${{ inputs.version }}" -ne "") { "--version `"$("${{ inputs.version }}")`"" }) `
-          --no-clean
+        $args = @(
+          "--project", "${{ inputs.project-path }}"
+          "--target", "${{ inputs.target }}"
+          "--buildspec", "${{ inputs.build-spec }}"
+          "--no-clean"
+        )
+        
+        if ("${{ inputs.version }}" -ne "") {
+          $args += @("--version", "${{ inputs.version }}")
+        }
+
+        g-cli lvbuildspec @args
       shell: powershell
