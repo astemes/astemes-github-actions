@@ -1,5 +1,5 @@
 name: 'LabVIEW Build Action'
-description: 'Build LabVIEW project using CLI'
+description: 'Build LabVIEW project using LabVIEW CLI'
 
 inputs:
   project-path:
