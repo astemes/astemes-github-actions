@@ -1,0 +1,13 @@
+name: 'Clear LabVIEW Compile Cache'
+description: 'Clears the LabVIEW compiled Object Cache'
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        LabVIEWCLI `
+          -OperationName ClearCompileCache `
+          -LabVIEWPath "$env:LabVIEWPath" `
+          -PortNumber "$env:LabVIEWPort" `
+          -LogToConsole true `
+          -Verbosity Minimal
+      shell: powershell
