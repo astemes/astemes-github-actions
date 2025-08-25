@@ -12,18 +12,48 @@ inputs:
     description: 'Target name for the build'
     required: false
     default: 'My Computer'
-
+  version:
+    description: 'Version to apply to the build'
+    required: false
+outputs:
+  exe-path:
+    description: 'Path to built exe file'
+    value: ${{ steps.exec-buildspec.outputs.exe-path }}
+  nipkg-path:
+    description: 'Path to built nipkg file'
+    value: ${{ steps.exec-buildspec.outputs.nipkg-path }}
 runs:
   using: "composite"
   steps:
-    - run: |
-        LabVIEWCLI `
-          -OperationName ExecuteBuildSpec `
-          -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
-          -TargetName "${{ inputs.target }}" `
-          -BuildSpecName "${{ inputs.build-spec }}" `
-          -LabVIEWPath "$env:LabVIEWPath" `
-          -PortNumber "$env:LabVIEWPort" `
-          -LogToConsole true `
-          -Verbosity Minimal
+      run: |
+        $args = @(
+          "-OperationName ExecuteVersionedBuildSpec"
+          "-ProjectPath `"$env:GITHUB_WORKSPACE\${{ inputs.project-path }}`""
+          "-TargetName `"$env:GITHUB_WORKSPACE\${{ inputs.target }}`""
+          "-BuildSpecName `"$env:GITHUB_WORKSPACE\${{ inputs.build-spec }}`""
+          "-LabVIEWPath `"$env:LabVIEWPath`""
+          "-PortNumber `"$env:LabVIEWPort`""
+          "-LogToConsole true"
+        )
+        if ("${{ inputs.version }}" -ne "") {
+          $args += "--version `"${{ inputs.version }}`""
+        }
+
+        $cmd = "LabVIEWCLI " + ($args -join " ")
+        Write-Host "Running: $cmd"
+        $output = Invoke-Expression $cmd
+        Write-Host "LabVIEWCLI raw output:"
+        Write-Host $output
+        $exePath = ($output -join "`n" | Select-String -Pattern '(\S+\.exe)' | ForEach-Object {
+            $_.Matches[0].Groups[1].Value
+        })
+        $nipkgPath = ($output -join "`n" | Select-String -Pattern '(\S+\.nipkg)' | ForEach-Object {
+            $_.Matches[0].Groups[1].Value
+        })
+
+        Write-Host "Extracted exe path: $exePath"
+        Write-Host "Extracted nipkg path: $nipkgPath"
+
+        "exe-path=$exePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "nipkg-path=$nipkgPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       shell: powershell
