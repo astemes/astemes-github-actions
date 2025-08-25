@@ -30,8 +30,8 @@ runs:
         $args = @(
           "-OperationName ExecuteVersionedBuildSpec"
           "-ProjectPath `"$env:GITHUB_WORKSPACE\${{ inputs.project-path }}`""
-          "-TargetName `"$env:GITHUB_WORKSPACE\${{ inputs.target }}`""
-          "-BuildSpecName `"$env:GITHUB_WORKSPACE\${{ inputs.build-spec }}`""
+          "-TargetName `"${{ inputs.target }}`""
+          "-BuildSpecName `"${{ inputs.build-spec }}`""
           "-LabVIEWPath `"$env:LabVIEWPath`""
           "-PortNumber `"$env:LabVIEWPort`""
           "-LogToConsole true"
