@@ -9,6 +9,10 @@ inputs:
     description: 'Log output directory'
     required: false
     default: 'logs'
+  fail-on-error:
+    description: 'Fail build on failed test'
+    required: false
+    default: 'false'
 
 runs:
   using: "composite"
@@ -35,3 +39,4 @@ runs:
           name: LUnit Tests
           path: logs/LabVIEWCLI_LUnit.xml
           reporter: java-junit
+          fail-on-error: ${{ inputs.fail-on-error }}
