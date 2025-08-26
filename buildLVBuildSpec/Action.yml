@@ -46,10 +46,9 @@ runs:
         $output = Invoke-Expression $cmd
         Write-Host "LabVIEWCLI raw output:"
         Write-Host $output
-        $outPath = ($output -join "`n" | Select-String -Pattern '(\S+\.${{ inputs.build-type }})' | ForEach-Object {
+        $outPath = ($output -join "`n" | Select-String -Pattern "(.+\.${{ inputs.build-type }})" | ForEach-Object {
             $_.Matches[0].Groups[1].Value
         })
-
         Write-Host "Extracted artifact path: $outPath"
 
         "artifact-path=$outPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
