@@ -1,0 +1,32 @@
+name: 'LUnit Test Action'
+description: 'Runs all LUnit tests in LabVIEW project using LUnit CLI'
+
+inputs:
+  project-path:
+    description: 'Path to LabVIEW project'
+    required: true
+  ppl-path:
+    description: 'Path to PPLs to use'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+      - run: |
+          LabVIEWCLI `
+            -OperationName LinkToPPL `
+            -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
+            -PPLPath "$env:GITHUB_WORKSPACE\${{ inputs.ppl-path }}" `
+            -LabVIEWPath $env:LabVIEWPath `
+            -PortNumber $env:LabVIEWPort `
+            -LogToConsole true `
+            -Verbosity Minimal
+        shell: powershell
+      - name: Publish Test Report
+        uses: astemes/test-reporter@v2
+        if: ${{ !cancelled() }}
+        with:
+          name: LUnit Tests
+          path: logs/LabVIEWCLI_LUnit.xml
+          reporter: java-junit
+          fail-on-error: ${{ inputs.fail-on-error }}
