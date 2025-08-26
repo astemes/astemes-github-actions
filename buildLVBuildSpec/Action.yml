@@ -15,11 +15,12 @@ inputs:
   version:
     description: 'Version to apply to the build'
     required: false
+  build-type:
+    description: 'File extension for the built artifact'
+    required: false 
+    default: 'nipkg'
 outputs:
-  exe-path:
-    description: 'Path to built exe file'
-    value: ${{ steps.exec-buildspec.outputs.exe-path }}
-  nipkg-path:
+  artifact-path:
     description: 'Path to built nipkg file'
     value: ${{ steps.exec-buildspec.outputs.nipkg-path }}
 runs:
@@ -45,16 +46,11 @@ runs:
         $output = Invoke-Expression $cmd
         Write-Host "LabVIEWCLI raw output:"
         Write-Host $output
-        $exePath = ($output -join "`n" | Select-String -Pattern '(\S+\.exe)' | ForEach-Object {
-            $_.Matches[0].Groups[1].Value
-        })
-        $nipkgPath = ($output -join "`n" | Select-String -Pattern '(\S+\.nipkg)' | ForEach-Object {
+        $outPath = ($output -join "`n" | Select-String -Pattern '(\S+\.`"${{ inputs.build-type }}`)' | ForEach-Object {
             $_.Matches[0].Groups[1].Value
         })
 
-        Write-Host "Extracted exe path: $exePath"
-        Write-Host "Extracted nipkg path: $nipkgPath"
+        Write-Host "Extracted artifact path: $outPath"
 
-        "exe-path=$exePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        "nipkg-path=$nipkgPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "artifact-path=$outPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       shell: powershell
