@@ -22,11 +22,3 @@ runs:
             -LogToConsole true `
             -Verbosity Minimal
         shell: powershell
-      - name: Publish Test Report
-        uses: astemes/test-reporter@v2
-        if: ${{ !cancelled() }}
-        with:
-          name: LUnit Tests
-          path: logs/LabVIEWCLI_LUnit.xml
-          reporter: java-junit
-          fail-on-error: ${{ inputs.fail-on-error }}
