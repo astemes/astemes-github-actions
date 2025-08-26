@@ -15,7 +15,7 @@ runs:
       - run: |
           $cmd = "LabVIEWCLI `
             -OperationName LinkToPPL `
-            -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
+            -ProjectPath "$env:GITHUB_WORKSPACE\\${{ inputs.project-path }}" `
             -PPLPath "${{ inputs.ppl-path }}" `
             -LabVIEWPath $env:LabVIEWPath `
             -PortNumber $env:LabVIEWPort `
