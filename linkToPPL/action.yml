@@ -16,7 +16,7 @@ runs:
           $args = @(
             "-OperationName LinkToPPL"
             "-ProjectPath `"$env:GITHUB_WORKSPACE\${{ inputs.project-path }}`""
-            "-PPLPath `"${{ inputs.ppl-path }}`""
+            "-ppl `"${{ inputs.ppl-path }}`""
             "-LabVIEWPath `"$env:LabVIEWPath`""
             "-PortNumber `"$env:LabVIEWPort`""
             "-LogToConsole true"
