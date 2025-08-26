@@ -13,16 +13,17 @@ runs:
   using: "composite"
   steps:
       - run: |
-          $cmd = "LabVIEWCLI `
-            -OperationName LinkToPPL `
-            -ProjectPath `"$env:GITHUB_WORKSPACE\${{ inputs.project-path }}`" `
-            -PPLPath `"${{ inputs.ppl-path }}`" `
-            -LabVIEWPath $env:LabVIEWPath `
-            -PortNumber $env:LabVIEWPort `
-            -LogToConsole true `
-            -Verbosity Minimal"
-          Write-Host "Cmd:"
-          Write-Host $cmd
+          $args = @(
+            "-OperationName LinkToPPL"
+            "-ProjectPath `"$env:GITHUB_WORKSPACE\${{ inputs.project-path }}`""
+            "-PPLPath `"${{ inputs.ppl-path }}`""
+            "-LabVIEWPath $env:LabVIEWPath"
+            "-PortNumber $env:LabVIEWPort"
+            "-LogToConsole true"
+            "-Verbosity Minimal"
+          )
+          $cmd = "LabVIEWCLI " + ($args -join " ")
+          Write-Host "Running: $cmd"
           $output = Invoke-Expression $cmd
           Write-Host "Result:"
           Write-Host $output
