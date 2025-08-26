@@ -21,8 +21,8 @@ inputs:
     default: 'nipkg'
 outputs:
   artifact-path:
-    description: 'Path to built nipkg file'
-    value: ${{ steps.exec-buildspec.outputs.nipkg-path }}
+    description: 'Path to built file'
+    value: ${{ steps.exec-buildspec.outputs.artifact-path }}
 runs:
   using: "composite"
   steps:
