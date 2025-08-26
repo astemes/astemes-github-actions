@@ -46,7 +46,7 @@ runs:
         $output = Invoke-Expression $cmd
         Write-Host "LabVIEWCLI raw output:"
         Write-Host $output
-        $outPath = ($output -join "`n" | Select-String -Pattern '(\S+\.`"${{ inputs.build-type }}`)' | ForEach-Object {
+        $outPath = ($output -join "`n" | Select-String -Pattern '(\S+\.${{ inputs.build-type }})' | ForEach-Object {
             $_.Matches[0].Groups[1].Value
         })
 
