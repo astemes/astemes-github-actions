@@ -1,0 +1,60 @@
+name: 'LabVIEW Build Action'
+description: 'Build LabVIEW project using CLI'
+
+inputs:
+  pkg-builder-solution-path:
+    description: 'Path to package package builder solution'
+    required: true
+outputs:
+  nipkg-path:
+    description: 'Path to built package'
+    value: ${{ steps.build-ni-package-build-spec.outputs.nipkg-path }}
+runs:
+  using: "composite"
+  steps:
+    - name: Get version
+      id: get-version
+      uses: astemes/astemes-github-actions/getVersion@main
+    - name: Set Package Build Spec version
+      run: |
+        $args = @(
+          "-OperationName SetNIPKGVersion"
+          "-PBSPath `"$env:GITHUB_WORKSPACE\${{ inputs.pkg-builder-solution-path }}`""
+          "-version `"${{ steps.get-version.outputs.version }}`""
+          "-LabVIEWPath `"$env:LabVIEWPath`""
+          "-PortNumber `"$env:LabVIEWPort`""
+          "-LogToConsole true"
+        )
+
+        $cmd = "LabVIEWCLI " + ($args -join " ")
+        Write-Host "Running: $cmd"
+        $output = Invoke-Expression $cmd
+        Write-Host "LabVIEWCLI raw output:"
+        Write-Host $output
+      shell: powershell
+    - id: build-ni-package-build-spec
+      run: |
+        $args = @(
+          "-o `"$env:GITHUB_WORKSPACE\${{ inputs.pkg-builder-solution-path }}`""
+          "-b `"packages`""
+        )
+
+        $cmd = "C:\\Program Files\\National Instruments\\Package Builder\\nipbcli " + ($args -join " ")
+        Write-Host "Running: $cmd"
+        $output = Invoke-Expression $cmd
+        Write-Host "LabVIEWCLI raw output:"
+        Write-Host $output
+        $nipkgPath = ($output -join "`n" | Select-String -Pattern '(\S+\.nipkg)' | ForEach-Object {
+            $_.Matches[0].Groups[1].Value
+        })
+
+        if (-not $nipkgPath) {
+          Write-Error "Failed to parse NIPKG file path from output"
+          exit 1
+        }
+
+        Write-Host "Extracted NIPKG path: $nipkgPath"
+
+        # Set output for later steps
+        "nipkg-path=$nipkgPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+      shell: powershell
