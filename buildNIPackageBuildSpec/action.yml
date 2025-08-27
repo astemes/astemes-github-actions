@@ -35,7 +35,7 @@ runs:
     - id: build-ni-package-build-spec
       run: |
         $args = @(
-          "-o `"$env:GITHUB_WORKSPACE\${{ inputs.pkg-builder-solution-path }}`""
+          " -o `"$env:GITHUB_WORKSPACE\${{ inputs.pkg-builder-solution-path }}`""
           "-b `"packages`""
         )
 
