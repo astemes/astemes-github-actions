@@ -38,7 +38,7 @@ runs:
           "-LogToConsole true"
         )
         if ("${{ inputs.version }}" -ne "") {
-          $args += "--version `"${{ inputs.version }}`""
+          $args += "-Version `"${{ inputs.version }}`""
         }
 
         $cmd = "LabVIEWCLI " + ($args -join " ")
