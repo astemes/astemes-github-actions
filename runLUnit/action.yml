@@ -45,3 +45,4 @@ runs:
           reporter: java-junit
           fail-on-error: ${{ inputs.fail-on-error }}
           working-directory: ${{ inputs.working-directory }}
+          search-files: false
