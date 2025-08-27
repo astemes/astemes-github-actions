@@ -39,7 +39,7 @@ runs:
           "-b `"packages`""
         )
 
-        $cmd = `"C:\\Program Files\\National Instruments\\Package Builder\\nipbcli `" + ($args -join " ")
+        $cmd = '"C:\Program Files\National Instruments\Package Builder\nipbcli"' + ($args -join " ")
         Write-Host "Running: $cmd"
         $output = Invoke-Expression $cmd
         Write-Host "LabVIEWCLI raw output:"
