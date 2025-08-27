@@ -41,7 +41,7 @@ runs:
         if: ${{ !cancelled() }}
         with:
           name: LUnit Tests
-          path: ${{ inputs.log-dir-path }}/LabVIEWCLI_LUnit.xml
+          path: ${{ inputs.working-directory }}/${{ inputs.log-dir-path }}/LabVIEWCLI_LUnit.xml
           reporter: java-junit
           fail-on-error: ${{ inputs.fail-on-error }}
           working-directory: ${{ inputs.working-directory }}
