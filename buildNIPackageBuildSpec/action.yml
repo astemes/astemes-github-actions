@@ -38,9 +38,8 @@ runs:
           "-o `"$env:GITHUB_WORKSPACE\${{ inputs.pkg-builder-solution-path }}`""
           "-b `"packages`""
         )
-
-        $cmd = '"C:\Program Files\National Instruments\Package Builder\nipbcli.exe" ' + ($args -join " ")
-        Write-Host "Running: $cmd"
+        $exe = "C:\Program Files\National Instruments\Package Builder\nipbcli.exe"
+        $output = & $exe @args
         $output = Invoke-Expression $cmd
         Write-Host "LabVIEWCLI raw output:"
         Write-Host $output
