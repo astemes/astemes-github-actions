@@ -35,14 +35,16 @@ runs:
     - id: build-ni-package-build-spec
       run: |
         $args = @(
-          "-o `"$env:GITHUB_WORKSPACE\${{ inputs.pkg-builder-solution-path }}`""
-          "-b `"packages`""
+          "-o", "$env:GITHUB_WORKSPACE\${{ inputs.pkg-builder-solution-path }}"
+          "-b", "packages"
         )
         $exe = "C:\Program Files\National Instruments\Package Builder\nipbcli.exe"
-        Write-Host "Running: $exe + ($args -join " ")"
+        Write-Host "Running: $exe $($args -join ' ')"
         $output = & $exe @args
-        Write-Host "LabVIEWCLI raw output:"
+        Write-Host "nipbcli raw output:"
         Write-Host $output
+
+        
         $nipkgPath = ($output -join "`n" | Select-String -Pattern '(\S+\.nipkg)' | ForEach-Object {
             $_.Matches[0].Groups[1].Value
         })
