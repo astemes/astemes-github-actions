@@ -40,7 +40,6 @@ runs:
         )
         $exe = "C:\Program Files\National Instruments\Package Builder\nipbcli.exe"
         $output = & $exe @args
-        $output = Invoke-Expression $cmd
         Write-Host "LabVIEWCLI raw output:"
         Write-Host $output
         $nipkgPath = ($output -join "`n" | Select-String -Pattern '(\S+\.nipkg)' | ForEach-Object {
