@@ -39,6 +39,7 @@ runs:
           "-b `"packages`""
         )
         $exe = "C:\Program Files\National Instruments\Package Builder\nipbcli.exe"
+        Write-Host "Running: $exe + ($args -join " ")"
         $output = & $exe @args
         Write-Host "LabVIEWCLI raw output:"
         Write-Host $output
