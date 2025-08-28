@@ -44,6 +44,8 @@ runs:
         Write-Host "nipbcli raw output:"
         Write-Host $output
 
+        $joined = $output -join "`n"
+        
         # Extract output directory
         $outDir = ($joined | Select-String -Pattern "Output directory\s+(.*)" | ForEach-Object {
             $_.Matches[0].Groups[1].Value.Trim()
