@@ -44,15 +44,17 @@ runs:
         Write-Host "nipbcli raw output:"
         Write-Host $output
 
-        
-        $nipkgPath = ($output -join "`n" | Select-String -Pattern '(\S+\.nipkg)' | ForEach-Object {
-            $_.Matches[0].Groups[1].Value
+        # Extract output directory
+        $outDir = ($joined | Select-String -Pattern "Output directory\s+(.*)" | ForEach-Object {
+            $_.Matches[0].Groups[1].Value.Trim()
         })
 
-        if (-not $nipkgPath) {
-          Write-Error "Failed to parse NIPKG file path from output"
-          exit 1
-        }
+        # Extract filename
+        $fileName = ($joined | Select-String -Pattern "Filename\s+(.*)" | ForEach-Object {
+            $_.Matches[0].Groups[1].Value.Trim()
+        })
+        
+        $nipkgPath = Join-Path $outDir $fileName
 
         Write-Host "Extracted NIPKG path: $nipkgPath"
 
