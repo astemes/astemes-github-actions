@@ -45,16 +45,12 @@ runs:
         Write-Host $output
 
         $joined = $output -join "`n"
-        
+
         # Extract output directory
-        $outDir = ($joined | Select-String -Pattern "Output directory\s+(.*)" | ForEach-Object {
-            $_.Matches[0].Groups[1].Value.Trim()
-        })
+        $outDir = [regex]::Matches($joined, '^\s*Output directory\s+(?<dir>.+?)\s*$', 'Multiline') | Select-Object -Last 1
 
         # Extract filename
-        $fileName = ($joined | Select-String -Pattern "Filename\s+(.*)" | ForEach-Object {
-            $_.Matches[0].Groups[1].Value.Trim()
-        })
+        $fileName = [regex]::Matches($joined, '^\s*Filename\s+(?<file>\S+\.nipkg)\s*$', 'Multiline') | Select-Object -Last 1
         
         $nipkgPath = Join-Path $outDir $fileName
 
