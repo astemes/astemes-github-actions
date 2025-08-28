@@ -46,14 +46,18 @@ runs:
 
         $joined = $output -join "`n"
 
-        # Extract output directory
-        $outDir = [regex]::Matches($joined, '^\s*Output directory\s+(?<dir>.+?)\s*$', 'Multiline') | Select-Object -Last 1
+        $dirMatch  = [regex]::Matches($joined, '^\s*Output directory\s+(?<dir>[A-Z]:\\.+?)\s*$', 'Multiline') | Select-Object -Last 1
+        $fileMatch = [regex]::Matches($joined, '^\s*Filename\s+(?<file>\S+\.nipkg)\s*$', 'Multiline') | Select-Object -Last 1
 
-        # Extract filename
-        $fileName = [regex]::Matches($joined, '^\s*Filename\s+(?<file>\S+\.nipkg)\s*$', 'Multiline') | Select-Object -Last 1
-        
+        if (-not $dirMatch.Success -or -not $fileMatch.Success) {
+          Write-Error "Failed to parse Output directory / Filename from Package Builder output"
+          exit 1
+        }
+
+        $outDir   = $dirMatch.Groups['dir'].Value.Trim()
+        $fileName = $fileMatch.Groups['file'].Value.Trim()
+
         $nipkgPath = Join-Path $outDir $fileName
-
         Write-Host "Extracted NIPKG path: $nipkgPath"
 
         # Set output for later steps
