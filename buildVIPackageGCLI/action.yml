@@ -9,7 +9,7 @@ inputs:
     description: 'Version to use for package'
     required: false
 outputs:
-  vip-path:
+  artifact-path:
     description: 'Path to built VIP file'
     value: ${{ steps.build-vip.outputs.vip-path }}
 runs:
