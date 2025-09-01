@@ -16,7 +16,7 @@ runs:
         $args = @(
           "-OperationName setTSSeqVersion"
           "-Path `"${{ github.workspace }}\${{ inputs.path }}`""
-          "-Version `"${{ inputs.version }}`""
+          "-Version ${{ inputs.version }}"
           "-LabVIEWPath `"$env:LabVIEWPath`""
           "-PortNumber `"$env:LabVIEWPort`""
           "-LogToConsole true"
