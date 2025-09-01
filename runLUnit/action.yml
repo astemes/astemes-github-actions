@@ -30,15 +30,14 @@ runs:
       - run: |
           LabVIEWCLI `
             -OperationName LUnit `
-            -ProjectPath "$env:GITHUB_WORKSPACE\${{ inputs.project-path }}" `
+            -ProjectPath "${{ github.workspace }}\${{ inputs.project-path }}" `
             -TestRunners 1 `
             -LabVIEWPath $env:LabVIEWPath `
             -PortNumber $env:LabVIEWPort `
             -ReportPath "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
             -LogToConsole true `
-            -TestRunners 1 `
             -ClearIndex TRUE `
-            -Verbosity Diagnostic
+            -Verbosity Minimal
         shell: powershell
       - name: Publish Test Report
         uses: astemes/test-reporter@v2
