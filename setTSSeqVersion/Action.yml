@@ -1,0 +1,30 @@
+name: 'LabVIEW Build Action'
+description: 'Build LabVIEW project using LabVIEW CLI'
+
+inputs:
+  path:
+    description: 'Path to sequence file or directory containing Sequence file'
+    required: true
+  version:
+    description: 'Version to apply to the build'
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - id: exec-buildspec
+      run: |
+        $args = @(
+          "-OperationName setTSSeqVersion"
+          "-Path `"${{ github.workspace }}\${{ inputs.path }}`""
+          "-Version `"${{ inputs.version }}`""
+          "-LabVIEWPath `"$env:LabVIEWPath`""
+          "-PortNumber `"$env:LabVIEWPort`""
+          "-LogToConsole true"
+        )
+
+        $cmd = "LabVIEWCLI " + ($args -join " ")
+        Write-Host "Running: $cmd"
+        $output = Invoke-Expression $cmd
+        Write-Host "LabVIEWCLI output:"
+        Write-Host $output
+      shell: powershell
