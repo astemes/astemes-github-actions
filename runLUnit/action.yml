@@ -47,4 +47,5 @@ runs:
           path: ${{ inputs.log-dir-path }}/*.xml
           reporter: java-junit
           fail-on-error: ${{ inputs.fail-on-error }}
+          list-suites: 'failed'
           working-directory: ${{ inputs.working-directory }}
