@@ -12,7 +12,7 @@ inputs:
   fail-on-error:
     description: 'Fail build on failed test'
     required: false
-    default: 'false'
+    default: false
   working-directory:
     description: 'Set working directory if not at root.'
     required: false
