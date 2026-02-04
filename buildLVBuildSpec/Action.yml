@@ -36,6 +36,7 @@ runs:
           "-LabVIEWPath `"$env:LabVIEWPath`""
           "-PortNumber `"$env:LabVIEWPort`""
           "-LogToConsole true"
+          "-Headless"
         )
         if ("${{ inputs.version }}" -ne "") {
           $args += "-Version `"${{ inputs.version }}`""

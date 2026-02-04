@@ -28,7 +28,8 @@ runs:
           -LabVIEWPath "$env:LabVIEWPath" `
           -PortNumber "$env:LabVIEWPort" `
           -LogToConsole true `
-          -Verbosity Minimal 2>&1
+          -Verbosity Minimal 2>&1 `
+          -Headless
         Write-Host "LabVIEWCLI raw output:"
         Write-Host $output
 

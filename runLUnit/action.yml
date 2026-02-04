@@ -37,11 +37,12 @@ runs:
             -ReportPath "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}\LabVIEWCLI_LUnit.xml" `
             -LogToConsole true `
             -ClearIndex TRUE `
-            -Verbosity Minimal
+            -Verbosity Minimal `
+            -Headless
         shell: powershell
       - name: Publish Test Report
         uses: astemes/test-reporter@v2
-        if: ${{ !cancelled() }} && ${{ !inputs.skip-reporting }}
+        if: ${{ !inputs.skip-reporting }}
         with:
           name: LUnit Tests
           path: ${{ inputs.log-dir-path }}/*.xml

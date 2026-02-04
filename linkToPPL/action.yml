@@ -21,6 +21,7 @@ runs:
             "-PortNumber `"$env:LabVIEWPort`""
             "-LogToConsole true"
             "-Verbosity Minimal"
+            "-Headless"
           )
           $cmd = "LabVIEWCLI " + ($args -join " ")
           Write-Host "Running: $cmd"

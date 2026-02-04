@@ -16,5 +16,6 @@ runs:
           -LabVIEWPath "$env:LabVIEWPath" `
           -PortNumber "$env:LabVIEWPort" `
           -LogToConsole true `
-          -Verbosity Minimal
+          -Verbosity Minimal `
+          -Headless
       shell: powershell
