@@ -17,10 +17,6 @@ inputs:
     description: 'Set working directory if not at root.'
     required: false
     default: ${{ github.workspace }}
-  skip-reporting:
-    description: 'Skip publishing test report'
-    required: false
-    default: 'false'
 
 runs:
   using: "composite"
@@ -42,7 +38,6 @@ runs:
         shell: powershell
       - name: Publish Test Report
         uses: astemes/test-reporter@v2
-        if: ${{ !inputs.skip-reporting }}
         with:
           name: LUnit Tests
           path: ${{ inputs.log-dir-path }}/*.xml
