@@ -1,0 +1,20 @@
+name: 'Close LabVIEW'
+description: 'Closes the LabVIEW application'
+
+inputs:
+  path:
+    description: 'Directory to mass comile'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        LabVIEWCLI `
+          -OperationName MassCompile `
+          -LabVIEWPath "$env:LabVIEWPath" `
+          -PortNumber "$env:LabVIEWPort" `
+          -LogToConsole true `
+          -Verbosity Minimal `
+          -Headless
+      shell: powershell
