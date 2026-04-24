@@ -5,7 +5,10 @@ inputs:
   path:
     description: 'Directory to mass comile'
     required: true
-
+  fail_workflow:
+    description: 'Fail workflow if CLI returns non-zero exit code'
+    required: false
+    default: 'true'
 runs:
   using: "composite"
   steps:
@@ -18,4 +21,14 @@ runs:
           -LogToConsole true `
           -Verbosity Minimal `
           -Headless
+
+        if ($LASTEXITCODE -ne 0) {
+          if ("${{ inputs.fail_workflow }}" -eq "true") {
+            Write-Error "Mass compile failed with exit code $LASTEXITCODE"
+            exit 1
+          } else {
+            Write-Warning "Mass compile failed with exit code $LASTEXITCODE, but continuing."
+            exit 0
+          }
+        }
       shell: powershell
