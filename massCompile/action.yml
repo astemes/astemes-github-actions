@@ -12,6 +12,7 @@ runs:
     - run: |
         LabVIEWCLI `
           -OperationName MassCompile `
+          -DirectoryToCompile "${{ github.workspace }}\${{ inputs.path }}" `
           -LabVIEWPath "$env:LabVIEWPath" `
           -PortNumber "$env:LabVIEWPort" `
           -LogToConsole true `
