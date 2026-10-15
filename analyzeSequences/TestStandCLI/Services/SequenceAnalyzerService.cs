@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using NationalInstruments.TestStand.Interop.API;
@@ -19,15 +18,12 @@ public static class SequenceAnalyzerService
     private static Project _project;
     private static bool _analysisComplete;
     private static Timer _messageUpdateTimer;
-    private static int _numberOfFilesAnalyzed = 0;
-
+    private static int _numberOfFilesAnalyzed;
 
     public static void AnalyzeDirectory(string analysisDirectory, string junitReportPath = null)
     {
         try
         {
-            ConsoleLogger.Debug("TestStand Analyzer");
-
             // The TestStand engine resolves relative paths against its own search directories,
             // not the working directory, so pass it absolute paths only.
             analysisDirectory = Path.GetFullPath(analysisDirectory);
@@ -41,21 +37,12 @@ public static class SequenceAnalyzerService
                 return;
             }
 
-            // Initialize TestStand engine
             InitializeTestStandEngine();
-
-            // Analyze sequences
             AnalyzeSequences(analysisDirectory);
-
-            // Display analysis results and collect messages
             var messages = DisplayAnalysisResults();
 
-            // Generate JUnit XML report if requested
             if (!string.IsNullOrEmpty(junitReportPath))
-            {
                 JUnitReportService.GenerateReport(junitReportPath, messages);
-            }
-            
 
             ConsoleLogger.Information("Analysis completed successfully.");
         }
@@ -70,47 +57,35 @@ public static class SequenceAnalyzerService
         }
     }
 
- 
     private static void InitializeTestStandEngine()
     {
         ConsoleLogger.Debug("Initializing TestStand engine...");
-        // Create and initialize analyzer
         _analyzer = new AnalyzerClass();
         _analyzer.Initialize();
         _analyzer.CacheSequenceFiles = false;
-        
-        ConsoleLogger.Debug("TestStand engine initialized ...");
 
-        // Get engine from analyzer
         _engine = _analyzer.Engine;
-        //
-        //// Acquire license
-        _engine.AcquireLicense(ApplicationLicenses.ApplicationLicense_SequenceEditor,AcquireLicenseOptions.AcquireLicenseOption_SuppressStartupDialog);
-        ConsoleLogger.Debug("TestStand engine license acquired ...");
+        _engine.AcquireLicense(ApplicationLicenses.ApplicationLicense_SequenceEditor, AcquireLicenseOptions.AcquireLicenseOption_SuppressStartupDialog);
+        ConsoleLogger.Debug("TestStand engine license acquired.");
 
-        //
-        //// Load type palette files
         try
         {
             _engine.LoadTypePaletteFilesEx(TypeConflictHandlerTypes.ConflictHandler_UseGlobalType);
         }
         catch (COMException ex)
         {
-            if (ex.ErrorCode != -17902) // Ignore specific error code
+            if (ex.ErrorCode != -17902)
                 throw;
         }
 
-        // Create a new project
         _project = _analyzer.NewProject();
 
-        // Initialize timer like the original code
         _messageUpdateTimer = new Timer();
-        _messageUpdateTimer.Interval = 50; // 500ms like original
+        _messageUpdateTimer.Interval = 50;
         _messageUpdateTimer.Tick += MessageUpdateTimer_Tick;
 
-        ConsoleLogger.Debug("TestStand engine initialized successfully.");
+        ConsoleLogger.Debug("TestStand engine initialized.");
     }
-
 
     private static void MessageUpdateTimer_Tick(object sender, EventArgs e)
     {
@@ -120,59 +95,40 @@ public static class SequenceAnalyzerService
             _analysisComplete = true;
             ConsoleLogger.Information("Analysis completed.");
         }
-        else
+        else if (_numberOfFilesAnalyzed != _project.AnalysisStatus.NumberOfFilesAnalyzed)
         {
-            if (_numberOfFilesAnalyzed != _project.AnalysisStatus.NumberOfFilesAnalyzed)
-            {
-                _numberOfFilesAnalyzed = _project.AnalysisStatus.NumberOfFilesAnalyzed;
-                ConsoleLogger.Debug("Analyzing... Files: {0}/{1}", _project.AnalysisStatus.NumberOfFilesAnalyzed, _project.AnalysisStatus.NumberOfFilesToAnalyze);
-            }
+            _numberOfFilesAnalyzed = _project.AnalysisStatus.NumberOfFilesAnalyzed;
+            ConsoleLogger.Debug("Analyzing... Files: {0}/{1}", _project.AnalysisStatus.NumberOfFilesAnalyzed, _project.AnalysisStatus.NumberOfFilesToAnalyze);
         }
     }
-
 
     private static void AnalyzeSequences(string directoryPath)
     {
         ConsoleLogger.Information("Analyzing sequences in: {0}", directoryPath);
 
-        //_engine.SearchDirectories.Insert(directoryPath,0,true);
-        // Find all .seq files in the directory
         var sequenceFiles = Directory.GetFiles(directoryPath, "*.seq", SearchOption.AllDirectories);
-
-        if (!sequenceFiles.Any())
+        if (sequenceFiles.Length == 0)
         {
             ConsoleLogger.Information("No .seq files found.");
             return;
         }
 
-        ConsoleLogger.Debug("Found {0} sequence files.", sequenceFiles.Length);
-
-        // Add files to the project
         foreach (var filePath in sequenceFiles)
-        {
             ConsoleLogger.Debug("  + Adding to project: {0}", Path.GetFileName(filePath));
-            _project.FilesToAnalyze = AddFileToArray(_project.FilesToAnalyze, filePath);
-        }
+        _project.FilesToAnalyze = sequenceFiles;
 
-        // Start analysis
         ConsoleLogger.Information("Starting analysis...");
         _project.StartAnalysis(0);
-
-        // Start the timer
         _messageUpdateTimer.Start();
 
-        // Wait for analysis to complete using Application.DoEvents() to process timer events
+        // Pump Windows messages so the timer can poll the analysis status
         while (!_analysisComplete)
         {
-            Application.DoEvents(); // Process Windows messages including timer events
-            Thread.Sleep(50); // Small delay to prevent high CPU usage
+            Application.DoEvents();
+            Thread.Sleep(50);
         }
-        
-        //_engine.SearchDirectories.Remove(0);
-
     }
 
- 
     private static List<AnalysisMessageInfo> DisplayAnalysisResults()
     {
         var collectedMessages = new List<AnalysisMessageInfo>();
@@ -188,7 +144,6 @@ public static class SequenceAnalyzerService
         try
         {
             var messagesCount = _project.Messages.Count;
-
             if (messagesCount == 0)
             {
                 ConsoleLogger.Information("No analysis messages found - all sequences are clean!");
@@ -198,55 +153,41 @@ public static class SequenceAnalyzerService
             ConsoleLogger.Information("Total messages: {0}", messagesCount);
             ConsoleLogger.Information("");
 
-            // Collect all messages and sort by severity (Error > Warning > Information)
-            var messages = new List<(AnalysisMessage message, int originalIndex)>();
+            var messages = new List<AnalysisMessage>();
             for (var i = 0; i < messagesCount; i++)
+                messages.Add(_project.Messages[i]);
+
+            // Sort by severity: Error > Warning > Information
+            messages.Sort((a, b) => GetSeverityPriority(a.Severity).CompareTo(GetSeverityPriority(b.Severity)));
+
+            foreach (var message in messages)
             {
-                messages.Add((_project.Messages[i], i));
-            }
-
-            // Sort by severity: Error (0) > Warning (1) > Information (2)
-            messages.Sort((a, b) => GetSeverityPriority(a.message.Severity).CompareTo(GetSeverityPriority(b.message.Severity)));
-
-            // Display messages in sorted order
-            foreach (var (message, originalIndex) in messages)
-            {
-                var severity = message.Severity;
-                var messageText = message.Text;
-
-                var prefix = "";
+                var prefix = "UNKNOWN ";
                 var messageSeverity = AnalysisMessageSeverity.Unknown;
 
-                switch (severity)
+                switch (message.Severity)
                 {
                     case RuleSeverity.RuleSeverity_Error:
                         errorCount++;
                         prefix = "ERROR   ";
                         messageSeverity = AnalysisMessageSeverity.Error;
                         break;
-
                     case RuleSeverity.RuleSeverity_Warning:
                         warningCount++;
                         prefix = "WARNING ";
                         messageSeverity = AnalysisMessageSeverity.Warning;
                         break;
-
                     case RuleSeverity.RuleSeverity_Information:
                         infoCount++;
                         prefix = "INFO    ";
                         messageSeverity = AnalysisMessageSeverity.Information;
                         break;
-
-                    default:
-                        prefix = "UNKNOWN ";
-                        break;
                 }
 
-                ConsoleLogger.Information("{0}{1}", prefix, messageText);
+                ConsoleLogger.Information("{0}{1}", prefix, message.Text);
 
                 string filePath = null;
                 string locationPath = null;
-
                 try
                 {
                     if (message.Locations != null && message.Locations.Count > 0)
@@ -271,7 +212,7 @@ public static class SequenceAnalyzerService
 
                 collectedMessages.Add(new AnalysisMessageInfo
                 {
-                    Text = messageText,
+                    Text = message.Text,
                     Severity = messageSeverity,
                     FilePath = filePath,
                     Location = locationPath
@@ -289,11 +230,7 @@ public static class SequenceAnalyzerService
         ConsoleLogger.Information("Errors: {0} | Warnings: {1} | Info: {2} | Total: {3}", errorCount, warningCount, infoCount, errorCount + warningCount + infoCount);
         ConsoleLogger.Information("");
 
-        if (errorCount > 0)
-            Environment.ExitCode = 1; 
-        else
-            Environment.ExitCode = 0;
-
+        Environment.ExitCode = errorCount > 0 ? 1 : 0;
         return collectedMessages;
     }
 
@@ -308,42 +245,28 @@ public static class SequenceAnalyzerService
         };
     }
 
-
-    private static string[] AddFileToArray(string[] existingFiles, string newFile)
-    {
-        if (existingFiles == null)
-            return new[] { newFile };
-
-        var newArray = new string[existingFiles.Length + 1];
-        Array.Copy(existingFiles, newArray, existingFiles.Length);
-        newArray[existingFiles.Length] = newFile;
-        return newArray;
-    }
-
-
     private static void Cleanup()
     {
         try
         {
-            if (_messageUpdateTimer != null)
+            _messageUpdateTimer?.Stop();
+            _messageUpdateTimer?.Dispose();
+            _messageUpdateTimer = null;
+
+            if (_engine != null)
             {
-                _messageUpdateTimer.Stop();
-                _messageUpdateTimer.Dispose();
-                _messageUpdateTimer = null;
+                _engine.UnloadAllModules();
+                _engine.ShutDown(true);
             }
-            _engine.UnloadAllModules();
-            _engine.ShutDown(true);
-            _analyzer.UnloadAllModules();
-            
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(_project);
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(_engine);
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(_analyzer);
+            _analyzer?.UnloadAllModules();
 
-            if (_project != null) _project = null;
+            if (_project != null) Marshal.ReleaseComObject(_project);
+            if (_engine != null) Marshal.ReleaseComObject(_engine);
+            if (_analyzer != null) Marshal.ReleaseComObject(_analyzer);
 
-            if (_analyzer != null) _analyzer = null;
-
-            if (_engine != null) _engine = null;
+            _project = null;
+            _engine = null;
+            _analyzer = null;
         }
         catch (Exception ex)
         {
