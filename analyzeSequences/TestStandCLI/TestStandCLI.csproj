@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <UseWindowsForms>true</UseWindowsForms>
+        <SelfContained>false</SelfContained>
+        <DebugType>none</DebugType>
+        <!-- Interop assemblies of the TestStand installation on the build machine -->
+        <TestStandAssemblies Condition="'$(TestStandAssemblies)' == ''">$(TestStand)\API\DotNet\Assemblies\CurrentVersion</TestStandAssemblies>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.CommandLine" Version="2.0.10" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="NationalInstruments.TestStand.Interop.API">
+        <HintPath>$(TestStandAssemblies)\NationalInstruments.TestStand.Interop.API.dll</HintPath>
+      </Reference>
+      <Reference Include="NationalInstruments.TestStand.Interop.SequenceAnalyzer">
+        <HintPath>$(TestStandAssemblies)\NationalInstruments.TestStand.Interop.SequenceAnalyzer.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
+</Project>
