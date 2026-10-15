@@ -10,70 +10,129 @@ inputs:
     required: false
     default: ''
   log-dir-path:
-    description: 'Report output directory'
+    description: 'Log output directory'
     required: false
     default: 'logs'
-  report-type:
-    description: 'Report format: ASCII, HTML or "RSL File"'
-    required: false
-    default: 'ASCII'
   fail-on-error:
-    description: 'Fail workflow if any VI Analyzer test fails or the analysis errors'
+    description: 'Fail build on failed VI Analyzer test'
     required: false
-    default: 'true'
-outputs:
-  report-path:
-    description: 'Path to the VI Analyzer report'
-    value: ${{ steps.run-vi-analyzer.outputs.report-path }}
+    default: true
+  working-directory:
+    description: 'Set working directory if not at root.'
+    required: false
+    default: ${{ github.workspace }}
+
 runs:
   using: "composite"
   steps:
-    - id: run-vi-analyzer
-      run: |
-        $analyzePath = "${{ github.workspace }}\${{ inputs.path }}"
-        $logDir = "${{ github.workspace }}\${{ inputs.log-dir-path }}"
-        New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+      - run: if not exist "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}" mkdir "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}"
+        shell: cmd
+      - run: |
+          $analyzePath = "${{ github.workspace }}\${{ inputs.path }}"
+          $reportPath = "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}\VIAnalyzer.txt"
+          $junitPath = "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}\VIAnalyzer.xml"
 
-        $extension = switch ("${{ inputs.report-type }}") {
-          'HTML'     { 'html' }
-          'RSL File' { 'rsl' }
-          default    { 'txt' }
-        }
-        $reportPath = "$logDir\VIAnalyzer.$extension"
-
-        # LabVIEW CLI cannot analyze a project file, so analyze the project directory instead
-        if ($analyzePath -like '*.lvproj') {
-          $analyzePath = Split-Path $analyzePath -Parent
-          Write-Host "Analyzing project directory $analyzePath"
-        }
-
-        $cliArgs = @(
-          '-OperationName', 'RunVIAnalyzer',
-          '-ConfigPath', $analyzePath,
-          '-ReportPath', $reportPath,
-          '-ReportSaveType', "${{ inputs.report-type }}",
-          '-LabVIEWPath', $env:LabVIEWPath,
-          '-PortNumber', $env:LabVIEWPort,
-          '-LogToConsole', 'true',
-          '-Verbosity', 'Minimal',
-          '-Headless'
-        )
-        if ("${{ inputs.config-password }}" -ne "") {
-          $cliArgs += @('-ConfigPassword', "${{ inputs.config-password }}")
-        }
-
-        LabVIEWCLI @cliArgs
-        $exitCode = $LASTEXITCODE
-
-        "report-path=$reportPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-
-        if ($exitCode -ne 0) {
-          if ("${{ inputs.fail-on-error }}" -eq "true") {
-            Write-Error "VI Analyzer failed with exit code $exitCode"
-            exit 1
-          } else {
-            Write-Warning "VI Analyzer failed with exit code $exitCode, but continuing."
-            exit 0
+          # LabVIEW CLI cannot analyze a project file, so analyze the project directory instead
+          if ($analyzePath -like '*.lvproj') {
+            $analyzePath = Split-Path $analyzePath -Parent
+            Write-Host "Analyzing project directory $analyzePath"
           }
-        }
-      shell: powershell
+
+          $cliArgs = @(
+            '-OperationName', 'RunVIAnalyzer',
+            '-ConfigPath', $analyzePath,
+            '-ReportPath', $reportPath,
+            '-ReportSaveType', 'ASCII',
+            '-LabVIEWPath', $env:LabVIEWPath,
+            '-PortNumber', $env:LabVIEWPort,
+            '-LogToConsole', 'true',
+            '-Verbosity', 'Minimal',
+            '-Headless'
+          )
+          if ("${{ inputs.config-password }}" -ne "") {
+            $cliArgs += @('-ConfigPassword', "${{ inputs.config-password }}")
+          }
+
+          LabVIEWCLI @cliArgs
+          # Exit code 3 means tests failed, which is reported by the test reporter
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3) {
+            Write-Error "VI Analyzer failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+
+          # Convert the ASCII report to JUnit XML, one test suite per VI and one test case per failed test
+          $lines = Get-Content -LiteralPath $reportPath
+          $summary = @{}
+          $suites = [ordered]@{}
+          $section = ''
+          $vi = $null
+          foreach ($line in $lines) {
+            if ($line -match '^(VIs Analyzed|Total Tests Run|Passed Tests|Failed Tests|Skipped Tests)\t(\d+)$') {
+              $summary[$Matches[1]] = [int]$Matches[2]
+            } elseif ($line -like 'Failed Tests (sorted by*') {
+              $section = 'Failed'
+            } elseif ($line -eq 'Testing Errors') {
+              $section = 'Error'
+            } elseif ($section -eq '' -or $line.Trim() -eq '' -or $line.Trim() -eq '(none)') {
+              continue
+            } elseif ($line -notmatch "`t") {
+              $vi = "$section`t$line"
+              if (-not $suites.Contains($vi)) { $suites[$vi] = [ordered]@{} }
+            } elseif ($vi -ne $null) {
+              $test, $message = $line -split "`t", 2
+              if (-not $suites[$vi].Contains($test)) { $suites[$vi][$test] = @() }
+              $suites[$vi][$test] += $message.Trim()
+            }
+          }
+
+          $esc = { param($s) [Security.SecurityElement]::Escape("$s") }
+          $failures = 0; $errors = 0
+          $suiteXml = foreach ($key in $suites.Keys) {
+            $kind, $header = $key -split "`t", 2
+            $name = $header -replace ' \(.*\)$', ''
+            $header = $header.Replace("${{ github.workspace }}\", '')
+            $tag = if ($kind -eq 'Error') { 'error' } else { 'failure' }
+            $cases = foreach ($test in $suites[$key].Keys) {
+              $messages = $suites[$key][$test]
+              if ($kind -eq 'Error') { $errors++ } else { $failures++ }
+              "    <testcase name=`"$(& $esc $test)`" classname=`"$(& $esc $name)`">"
+              "      <$tag message=`"$(& $esc $messages[0])`">$(& $esc ($messages -join "`n"))</$tag>"
+              "    </testcase>"
+            }
+            $count = $suites[$key].Count
+            $attr = if ($kind -eq 'Error') { "errors=`"$count`" failures=`"0`"" } else { "errors=`"0`" failures=`"$count`"" }
+            "  <testsuite name=`"$(& $esc $header)`" tests=`"$count`" $attr>"
+            $cases
+            "  </testsuite>"
+          }
+
+          # The ASCII report lists failures only, so the passed tests are summarized in one test case
+          $passed = $summary['Passed Tests']
+          $total = $summary['Total Tests Run']
+          $viCount = $summary['VIs Analyzed']
+          $summaryXml = @(
+            "  <testsuite name=`"VI Analyzer`" tests=`"1`" errors=`"0`" failures=`"0`">"
+            "    <testcase name=`"$passed of $total tests passed on $viCount VIs`" classname=`"VI Analyzer`"/>"
+            "  </testsuite>"
+          )
+
+          $xml = @(
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            "<testsuites name=`"VI Analyzer`" tests=`"$($failures + $errors + 1)`" failures=`"$failures`" errors=`"$errors`">"
+            $summaryXml
+            $suiteXml
+            '</testsuites>'
+          ) -join "`n"
+          [IO.File]::WriteAllText($junitPath, $xml, (New-Object Text.UTF8Encoding $false))
+          Write-Host "JUnit report written to $junitPath"
+        shell: powershell
+      - name: Publish VI Analyzer Report
+        uses: astemes/test-reporter@v2
+        if: ${{ !cancelled() }}
+        with:
+          name: VI Analyzer
+          path: ${{ inputs.log-dir-path }}/VIAnalyzer.xml
+          reporter: java-junit
+          fail-on-error: ${{ inputs.fail-on-error }}
+          list-suites: 'failed'
+          working-directory: ${{ inputs.working-directory }}
