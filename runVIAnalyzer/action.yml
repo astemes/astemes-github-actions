@@ -1,0 +1,79 @@
+name: 'VI Analyzer Action'
+description: 'Runs VI Analyzer on a LabVIEW project, directory, VI, LLB or VI Analyzer configuration file using LabVIEW CLI'
+
+inputs:
+  path:
+    description: 'Path to analyze: a LabVIEW project (.lvproj), directory, VI, LLB or VI Analyzer configuration file (.viancfg). A project analyzes all VIs in the project directory.'
+    required: true
+  config-password:
+    description: 'Password of the VI Analyzer configuration file, if any'
+    required: false
+    default: ''
+  log-dir-path:
+    description: 'Report output directory'
+    required: false
+    default: 'logs'
+  report-type:
+    description: 'Report format: ASCII, HTML or "RSL File"'
+    required: false
+    default: 'ASCII'
+  fail-on-error:
+    description: 'Fail workflow if any VI Analyzer test fails or the analysis errors'
+    required: false
+    default: 'true'
+outputs:
+  report-path:
+    description: 'Path to the VI Analyzer report'
+    value: ${{ steps.run-vi-analyzer.outputs.report-path }}
+runs:
+  using: "composite"
+  steps:
+    - id: run-vi-analyzer
+      run: |
+        $analyzePath = "${{ github.workspace }}\${{ inputs.path }}"
+        $logDir = "${{ github.workspace }}\${{ inputs.log-dir-path }}"
+        New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+
+        $extension = switch ("${{ inputs.report-type }}") {
+          'HTML'     { 'html' }
+          'RSL File' { 'rsl' }
+          default    { 'txt' }
+        }
+        $reportPath = "$logDir\VIAnalyzer.$extension"
+
+        # LabVIEW CLI cannot analyze a project file, so analyze the project directory instead
+        if ($analyzePath -like '*.lvproj') {
+          $analyzePath = Split-Path $analyzePath -Parent
+          Write-Host "Analyzing project directory $analyzePath"
+        }
+
+        $cliArgs = @(
+          '-OperationName', 'RunVIAnalyzer',
+          '-ConfigPath', $analyzePath,
+          '-ReportPath', $reportPath,
+          '-ReportSaveType', "${{ inputs.report-type }}",
+          '-LabVIEWPath', $env:LabVIEWPath,
+          '-PortNumber', $env:LabVIEWPort,
+          '-LogToConsole', 'true',
+          '-Verbosity', 'Minimal',
+          '-Headless'
+        )
+        if ("${{ inputs.config-password }}" -ne "") {
+          $cliArgs += @('-ConfigPassword', "${{ inputs.config-password }}")
+        }
+
+        LabVIEWCLI @cliArgs
+        $exitCode = $LASTEXITCODE
+
+        "report-path=$reportPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+        if ($exitCode -ne 0) {
+          if ("${{ inputs.fail-on-error }}" -eq "true") {
+            Write-Error "VI Analyzer failed with exit code $exitCode"
+            exit 1
+          } else {
+            Write-Warning "VI Analyzer failed with exit code $exitCode, but continuing."
+            exit 0
+          }
+        }
+      shell: powershell
