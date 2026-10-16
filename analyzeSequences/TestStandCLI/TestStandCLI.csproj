@@ -14,6 +14,13 @@
       <PackageReference Include="System.CommandLine" Version="2.0.10" />
     </ItemGroup>
 
+    <!-- The TestStand engine requires both frameworks to be loaded in a .NET host process,
+         see <TestStand>\AdapterSupport\DotNetSupport\DotnetCore.runtimeconfig.json -->
+    <ItemGroup>
+      <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
     <ItemGroup>
       <Reference Include="NationalInstruments.TestStand.Interop.API">
         <HintPath>$(TestStandAssemblies)\NationalInstruments.TestStand.Interop.API.dll</HintPath>
