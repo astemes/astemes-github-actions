@@ -28,13 +28,14 @@ runs:
           # The default on Windows is C:\Program Files\dotnet, which the runner account cannot write to
           DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}\dotnet
       - run: |
-          # Build against the interop assemblies of the active TestStand version, with the same bitness
+          # Build against the interop assemblies of the active TestStand version, with the same bitness.
+          # Self-contained, so the exe does not need a .NET runtime of matching bitness installed on the runner.
           $runtime = if ("$env:TestStand" -like "${env:ProgramFiles(x86)}*") { 'win-x86' } else { 'win-x64' }
           Write-Host "Building TestStandCLI for $runtime against $env:TestStand"
           dotnet publish "${{ github.action_path }}\TestStandCLI\TestStandCLI.csproj" `
             --configuration Release `
             --runtime $runtime `
-            --self-contained false `
+            --self-contained true `
             --output "$env:RUNNER_TEMP\TestStandCLI" `
             --nologo `
             --verbosity quiet
