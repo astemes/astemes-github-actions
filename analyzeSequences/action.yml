@@ -24,6 +24,9 @@ runs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+        env:
+          # The default on Windows is C:\Program Files\dotnet, which the runner account cannot write to
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}\dotnet
       - run: |
           # Build against the interop assemblies of the active TestStand version, with the same bitness
           $runtime = if ("$env:TestStand" -like "${env:ProgramFiles(x86)}*") { 'win-x86' } else { 'win-x64' }
