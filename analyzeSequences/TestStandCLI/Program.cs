@@ -44,7 +44,7 @@ internal class Program
             var junitReportPath = parseResult.GetValue(updateJunitReportOption);
             ConsoleLogger.Information("Updating step prototypes in directory: {0}", directory);
             UpdatePrototypesService.UpdateDirectory(directory, junitReportPath);
-            Environment.Exit(Environment.ExitCode);
+            UpdatePrototypesService.Exit();
         });
         rootCommand.Add(updateCommand);
 
