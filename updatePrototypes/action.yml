@@ -1,0 +1,77 @@
+name: 'TestStand Update Prototypes Action'
+description: 'Reloads the prototypes of all LabVIEW steps in the sequence files in a directory and saves the files'
+
+inputs:
+  path:
+    description: 'Directory with sequence files to update, absolute or relative to the workspace. All *.seq files are updated recursively.'
+    required: true
+  log-dir-path:
+    description: 'Log output directory'
+    required: false
+    default: 'logs'
+  fail-on-error:
+    description: 'Fail build if a step prototype could not be updated'
+    required: false
+    default: true
+  working-directory:
+    description: 'Set working directory if not at root.'
+    required: false
+    default: ${{ github.workspace }}
+
+runs:
+  using: "composite"
+  steps:
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+        env:
+          # The default on Windows is C:\Program Files\dotnet, which the runner account cannot write to
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}\dotnet
+      - run: |
+          # The CLI is shared with the analyzeSequences action.
+          # Build against the interop assemblies of the active TestStand version, with the same bitness.
+          # Self-contained, so the exe does not need a .NET runtime of matching bitness installed on the runner.
+          $runtime = if ("$env:TestStand" -like "${env:ProgramFiles(x86)}*") { 'win-x86' } else { 'win-x64' }
+          Write-Host "Building TestStandCLI for $runtime against $env:TestStand"
+          dotnet publish "${{ github.action_path }}\..\analyzeSequences\TestStandCLI\TestStandCLI.csproj" `
+            --configuration Release `
+            --runtime $runtime `
+            --self-contained true `
+            --output "$env:RUNNER_TEMP\TestStandCLI" `
+            --nologo `
+            --verbosity quiet
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Building TestStandCLI failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+        shell: powershell
+      - run: |
+          # Reloads every LabVIEW step that is not skipped, keeping existing arguments, and saves the files.
+          # Steps are reloaded from the VI path even when the stored namespace no longer matches the VI,
+          # so the build may rename the libraries owning the VIs.
+          # Steps that fail to update are reported as failures by the test reporter.
+          # The TestStand engine needs absolute paths.
+          $sequencePath = "${{ inputs.path }}"
+          if (-not [IO.Path]::IsPathRooted($sequencePath)) {
+            $sequencePath = Join-Path "${{ github.workspace }}" $sequencePath
+          }
+          $sequencePath = [IO.Path]::GetFullPath($sequencePath)
+          $reportPath = "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}\UpdatePrototypes.xml"
+          Remove-Item -LiteralPath $reportPath -ErrorAction SilentlyContinue
+          & "$env:RUNNER_TEMP\TestStandCLI\TestStandCLI.exe" update-prototypes $sequencePath --junit-report $reportPath
+          if (-not (Test-Path -LiteralPath $reportPath)) {
+            Write-Error "Updating step prototypes failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+          exit 0
+        shell: powershell
+      - name: Publish Update Prototypes Report
+        uses: astemes/test-reporter@v2
+        if: ${{ !cancelled() }}
+        with:
+          name: TestStand Update Prototypes
+          path: ${{ inputs.log-dir-path }}/UpdatePrototypes.xml
+          reporter: java-junit
+          fail-on-error: ${{ inputs.fail-on-error }}
+          list-suites: 'failed'
+          working-directory: ${{ inputs.working-directory }}

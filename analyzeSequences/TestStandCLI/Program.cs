@@ -31,6 +31,23 @@ internal class Program
         });
         rootCommand.Add(analyzeCommand);
 
+        var updateCommand = new Command("update-prototypes", "Reload the prototypes of all LabVIEW steps in sequence files in directory and save the files");
+        updateCommand.Add(verboseOption);
+        var updateDirectoryArg = new Argument<string>("directory") { Description = "Directory with sequence files to update" };
+        var updateJunitReportOption = new Option<string>("--junit-report") { Description = "Output path for JUnit XML report" };
+        updateCommand.Add(updateDirectoryArg);
+        updateCommand.Add(updateJunitReportOption);
+        updateCommand.SetAction(parseResult =>
+        {
+            ConsoleLogger.Verbose = parseResult.GetValue(verboseOption);
+            var directory = parseResult.GetValue(updateDirectoryArg);
+            var junitReportPath = parseResult.GetValue(updateJunitReportOption);
+            ConsoleLogger.Information("Updating step prototypes in directory: {0}", directory);
+            UpdatePrototypesService.UpdateDirectory(directory, junitReportPath);
+            Environment.Exit(Environment.ExitCode);
+        });
+        rootCommand.Add(updateCommand);
+
         return rootCommand.Parse(args).Invoke();
     }
 }

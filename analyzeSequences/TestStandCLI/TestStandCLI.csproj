@@ -28,6 +28,9 @@
       <Reference Include="NationalInstruments.TestStand.Interop.SequenceAnalyzer">
         <HintPath>$(TestStandAssemblies)\NationalInstruments.TestStand.Interop.SequenceAnalyzer.dll</HintPath>
       </Reference>
+      <Reference Include="NationalInstruments.TestStand.Interop.AdapterAPI">
+        <HintPath>$(TestStandAssemblies)\NationalInstruments.TestStand.Interop.AdapterAPI.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
 </Project>
