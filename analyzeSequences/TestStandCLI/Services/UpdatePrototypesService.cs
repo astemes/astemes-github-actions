@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using Thread = System.Threading.Thread;
 using NationalInstruments.TestStand.Interop.AdapterAPI;
 using NationalInstruments.TestStand.Interop.API;
 using TestStandCLI.Logging;
@@ -25,6 +27,9 @@ public static class UpdatePrototypesService
         StepGroups.StepGroup_Main,
         StepGroups.StepGroup_Cleanup
     };
+
+    private static readonly TimeSpan ShutDownTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan CleanupTimeout = TimeSpan.FromSeconds(120);
 
     private static Engine _engine;
 
@@ -60,6 +65,7 @@ public static class UpdatePrototypesService
             {
                 ConsoleLogger.Information("Updating: {0} ({1}/{2})", sequenceFiles[i], i + 1, sequenceFiles.Length);
                 UpdateSequenceFile(sequenceFiles[i], messages);
+                ProcessUIMessages();
             }
 
             var updated = messages.FindAll(m => m.Severity == AnalysisMessageSeverity.Information).Count;
@@ -88,6 +94,8 @@ public static class UpdatePrototypesService
     {
         ConsoleLogger.Debug("Initializing TestStand engine...");
         _engine = new Engine();
+        // Without a UI, the engine messages must be polled and acknowledged, or shutdown never completes
+        _engine.UIMessagePollingEnabled = true;
         _engine.AcquireLicense(ApplicationLicenses.ApplicationLicense_SequenceEditor, AcquireLicenseOptions.AcquireLicenseOption_SuppressStartupDialog);
         ConsoleLogger.Debug("TestStand engine license acquired.");
 
@@ -160,16 +168,62 @@ public static class UpdatePrototypesService
         }
     }
 
+    /// <summary>
+    /// Acknowledges all queued engine messages. Returns true if the shutdown completed.
+    /// </summary>
+    private static bool ProcessUIMessages()
+    {
+        var shutDownComplete = false;
+        while (!_engine.IsUIMessageQueueEmpty)
+        {
+            var message = _engine.GetUIMessage();
+            ConsoleLogger.Debug("TestStand UI message: {0}", message.Event);
+            if (message.Event == UIMessageCodes.UIMsg_ShutDownComplete)
+                shutDownComplete = true;
+            message.Acknowledge();
+            Marshal.ReleaseComObject(message);
+        }
+        return shutDownComplete;
+    }
+
     private static void Cleanup()
     {
+        if (_engine == null)
+            return;
+
+        // The sequence files are saved at this point. If shutting down the engine hangs,
+        // exit anyway instead of blocking the workflow.
+        var watchdog = new Thread(() =>
+        {
+            Thread.Sleep(CleanupTimeout);
+            ConsoleLogger.Error("TestStand engine did not shut down within {0} s, exiting.", CleanupTimeout.TotalSeconds);
+            Console.Out.Flush();
+            Environment.Exit(Environment.ExitCode);
+        }) { IsBackground = true };
+        watchdog.Start();
+
         try
         {
-            if (_engine == null)
-                return;
+            ConsoleLogger.Information("Unloading modules...");
             _engine.UnloadAllModules();
+            ProcessUIMessages();
+
+            ConsoleLogger.Information("Shutting down TestStand engine...");
             _engine.ShutDown(true);
+            var timer = Stopwatch.StartNew();
+            while (!ProcessUIMessages())
+            {
+                if (timer.Elapsed > ShutDownTimeout)
+                {
+                    ConsoleLogger.Error("No shutdown complete message from TestStand within {0} s.", ShutDownTimeout.TotalSeconds);
+                    break;
+                }
+                Thread.Sleep(50);
+            }
+
             Marshal.ReleaseComObject(_engine);
             _engine = null;
+            ConsoleLogger.Information("TestStand engine shut down.");
         }
         catch (Exception ex)
         {
