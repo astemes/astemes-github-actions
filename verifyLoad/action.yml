@@ -1,0 +1,77 @@
+name: 'TestStand Verify Load Action'
+description: 'Loads the VIs of all LabVIEW steps in the sequence files in a directory, failing on VIs that cannot be loaded or are broken'
+
+inputs:
+  path:
+    description: 'Directory with sequence files to verify, absolute or relative to the workspace. All *.seq files are verified recursively.'
+    required: true
+  log-dir-path:
+    description: 'Log output directory'
+    required: false
+    default: 'logs'
+  fail-on-error:
+    description: 'Fail build if the VI of a step could not be loaded'
+    required: false
+    default: true
+  working-directory:
+    description: 'Set working directory if not at root.'
+    required: false
+    default: ${{ github.workspace }}
+
+runs:
+  using: "composite"
+  steps:
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+        env:
+          # The default on Windows is C:\Program Files\dotnet, which the runner account cannot write to
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}\dotnet
+      - run: |
+          # The CLI is shared with the analyzeSequences action.
+          # Build against the interop assemblies of the active TestStand version, with the same bitness.
+          # Self-contained, so the exe does not need a .NET runtime of matching bitness installed on the runner.
+          $runtime = if ("$env:TestStand" -like "${env:ProgramFiles(x86)}*") { 'win-x86' } else { 'win-x64' }
+          Write-Host "Building TestStandCLI for $runtime against $env:TestStand"
+          dotnet publish "${{ github.action_path }}\..\analyzeSequences\TestStandCLI\TestStandCLI.csproj" `
+            --configuration Release `
+            --runtime $runtime `
+            --self-contained true `
+            --output "$env:RUNNER_TEMP\TestStandCLI" `
+            --nologo `
+            --verbosity quiet
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Building TestStandCLI failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+        shell: powershell
+      - run: |
+          # Loads the VI of every LabVIEW step that is not skipped, as TestStand does before running it.
+          # Unlike loading the prototype, this fails for broken VIs, e.g. when a dependency is missing.
+          # Close LabVIEW before, so VIs and PPLs loaded by earlier steps cannot hide missing files.
+          # Steps that fail to load are reported as failures by the test reporter.
+          # The TestStand engine needs absolute paths.
+          $sequencePath = "${{ inputs.path }}"
+          if (-not [IO.Path]::IsPathRooted($sequencePath)) {
+            $sequencePath = Join-Path "${{ github.workspace }}" $sequencePath
+          }
+          $sequencePath = [IO.Path]::GetFullPath($sequencePath)
+          $reportPath = "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}\VerifyLoad.xml"
+          Remove-Item -LiteralPath $reportPath -ErrorAction SilentlyContinue
+          & "$env:RUNNER_TEMP\TestStandCLI\TestStandCLI.exe" verify-load $sequencePath --junit-report $reportPath
+          if (-not (Test-Path -LiteralPath $reportPath)) {
+            Write-Error "Verifying code modules failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+          exit 0
+        shell: powershell
+      - name: Publish Verify Load Report
+        uses: astemes/test-reporter@v2
+        if: ${{ !cancelled() }}
+        with:
+          name: TestStand Verify Load
+          path: ${{ inputs.log-dir-path }}/VerifyLoad.xml
+          reporter: java-junit
+          fail-on-error: ${{ inputs.fail-on-error }}
+          list-suites: 'failed'
+          working-directory: ${{ inputs.working-directory }}

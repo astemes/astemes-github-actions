@@ -36,7 +36,7 @@ public static class RelinkToPPLService
 
     private static Engine _engine;
 
-    public static void RelinkDirectory(string directory, string libraryDir, string pplPath, bool dryRun, string junitReportPath = null)
+    public static void RelinkDirectory(string directory, string libraryDir, string pplPath, string pplRootDir, bool dryRun, string junitReportPath = null)
     {
         var messages = new List<AnalysisMessageInfo>();
         try
@@ -65,7 +65,7 @@ public static class RelinkToPPLService
             for (var i = 0; i < sequenceFiles.Length; i++)
             {
                 ConsoleLogger.Information("Relinking: {0} ({1}/{2})", sequenceFiles[i], i + 1, sequenceFiles.Length);
-                RelinkSequenceFile(sequenceFiles[i], libraryDir, pplPath, dryRun, messages);
+                RelinkSequenceFile(sequenceFiles[i], libraryDir, pplPath, pplRootDir, dryRun, messages);
                 ProcessUIMessages();
             }
 
@@ -100,6 +100,97 @@ public static class RelinkToPPLService
         }
     }
 
+    /// <summary>
+    /// Loads the VI of every LabVIEW step that is not skipped, as TestStand does before running it.
+    /// Unlike loading the prototype, this fails when a VI is broken, for example because a
+    /// dependency of the PPL is missing. Steps are reported as Information when they load.
+    /// </summary>
+    public static void VerifyLoadDirectory(string directory, string junitReportPath = null)
+    {
+        var messages = new List<AnalysisMessageInfo>();
+        try
+        {
+            directory = Path.GetFullPath(directory);
+            if (!string.IsNullOrEmpty(junitReportPath))
+                junitReportPath = Path.GetFullPath(junitReportPath);
+
+            if (!Directory.Exists(directory))
+                throw new DirectoryNotFoundException($"Directory '{directory}' does not exist.");
+
+            var sequenceFiles = Directory.GetFiles(directory, "*.seq", SearchOption.AllDirectories);
+            if (sequenceFiles.Length == 0)
+                throw new FileNotFoundException($"No .seq files found in '{directory}'.");
+
+            InitializeTestStandEngine();
+
+            foreach (var path in sequenceFiles)
+            {
+                ConsoleLogger.Information("Loading code modules: {0}", path);
+                var sequenceFile = _engine.GetSequenceFileEx(path, GetSeqFileOptions.GetSeqFile_DoNotRunLoadCallback);
+                try
+                {
+                    for (var s = 0; s < sequenceFile.NumSequences; s++)
+                    {
+                        var sequence = sequenceFile.GetSequence(s);
+                        foreach (var stepGroup in StepGroupsToRelink)
+                        {
+                            for (var i = 0; i < sequence.GetNumSteps(stepGroup); i++)
+                                VerifyLoadStep(path, sequence, sequence.GetStep(i, stepGroup), messages);
+                        }
+                    }
+                    sequenceFile.UnloadModules();
+                }
+                finally
+                {
+                    _engine.ReleaseSequenceFileEx(sequenceFile, ReleaseSeqFileOptions.ReleaseSeqFile_UnloadFile);
+                }
+                ProcessUIMessages();
+            }
+
+            var loaded = messages.FindAll(m => m.Severity == AnalysisMessageSeverity.Information).Count;
+            var failed = messages.FindAll(m => m.Severity == AnalysisMessageSeverity.Error).Count;
+            ConsoleLogger.Information("");
+            ConsoleLogger.Information("---------- SUMMARY ----------");
+            ConsoleLogger.Information("Sequence files: {0} | Steps loaded: {1} | Errors: {2}", sequenceFiles.Length, loaded, failed);
+            Environment.ExitCode = failed > 0 ? 1 : 0;
+        }
+        catch (Exception ex)
+        {
+            ConsoleLogger.Error("Error: {0}", ex.Message);
+            messages.Add(new AnalysisMessageInfo { Text = ex.Message, Severity = AnalysisMessageSeverity.Error });
+            Environment.ExitCode = 1;
+        }
+        finally
+        {
+            if (!string.IsNullOrEmpty(junitReportPath))
+                JUnitReportService.GenerateReport(junitReportPath, messages);
+            Cleanup();
+        }
+    }
+
+    private static void VerifyLoadStep(string path, Sequence sequence, Step step, List<AnalysisMessageInfo> messages)
+    {
+        if (step.AdapterKeyName != LabVIEWAdapterKeyName || step.GetRunModeEx() == RunModes.RunMode_Skip)
+            return;
+
+        var location = $"{sequence.Name}.{step.Name}";
+        var viPath = ((LabVIEWModule)step.Module).VIPath;
+        try
+        {
+            // Throw instead of showing an error dialog, which would block an unattended run
+            step.Module.Load(LoadModuleOptions.LoadModule_ThrowExceptionOnError | LoadModuleOptions.LoadModule_DoNotPromptToFindFile, null);
+            var text = $"{location}: loaded '{viPath}'";
+            ConsoleLogger.Debug("  {0}", text);
+            messages.Add(new AnalysisMessageInfo { Text = text, Severity = AnalysisMessageSeverity.Information, FilePath = path, Location = location });
+        }
+        catch (Exception ex)
+        {
+            var text = $"{location}: failed to load '{viPath}': {ex.Message}";
+            ConsoleLogger.Error("ERROR   {0}", text);
+            messages.Add(new AnalysisMessageInfo { Text = text, Severity = AnalysisMessageSeverity.Error, FilePath = path, Location = location });
+        }
+    }
+
     private static void InitializeTestStandEngine()
     {
         ConsoleLogger.Debug("Initializing TestStand engine...");
@@ -126,11 +217,15 @@ public static class RelinkToPPLService
         return Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(baseDir, path));
     }
 
-    private static void RelinkSequenceFile(string path, string libraryDir, string pplPath, bool dryRun, List<AnalysisMessageInfo> messages)
+    private static void RelinkSequenceFile(string path, string libraryDir, string pplPath, string pplRootDir, bool dryRun, List<AnalysisMessageInfo> messages)
     {
         var sequenceDir = Path.GetDirectoryName(path);
         var libraryDirFull = ResolveAgainst(sequenceDir, libraryDir).TrimEnd('\\') + "\\";
         var pplFull = ResolveAgainst(sequenceDir, pplPath);
+        var pplRootFull = string.IsNullOrEmpty(pplRootDir)
+            ? libraryDirFull
+            : ResolveAgainst(sequenceDir, pplRootDir).TrimEnd('\\') + "\\";
+        ConsoleLogger.Information("  PPL root directory: {0}", pplRootFull);
         ConsoleLogger.Information("  Library directory: {0}", libraryDirFull);
         ConsoleLogger.Information("  PPL: {0}", pplFull);
 
@@ -151,7 +246,7 @@ public static class RelinkToPPLService
                 foreach (var stepGroup in StepGroupsToRelink)
                 {
                     for (var i = 0; i < sequence.GetNumSteps(stepGroup); i++)
-                        RelinkStep(path, sequenceDir, libraryDirFull, pplFull, dryRun, sequence, sequence.GetStep(i, stepGroup), messages);
+                        RelinkStep(path, sequenceDir, libraryDirFull, pplRootFull, pplFull, dryRun, sequence, sequence.GetStep(i, stepGroup), messages);
                 }
             }
 
@@ -165,7 +260,7 @@ public static class RelinkToPPLService
         }
     }
 
-    private static void RelinkStep(string path, string sequenceDir, string libraryDirFull, string pplFull, bool dryRun,
+    private static void RelinkStep(string path, string sequenceDir, string libraryDirFull, string pplRootFull, string pplFull, bool dryRun,
         Sequence sequence, Step step, List<AnalysisMessageInfo> messages)
     {
         if (step.AdapterKeyName != LabVIEWAdapterKeyName)
@@ -186,8 +281,9 @@ public static class RelinkToPPLService
             return;
         }
 
-        var relativeToLibrary = viFull.Substring(libraryDirFull.Length);
-        var newPath = Path.GetRelativePath(sequenceDir, Path.Combine(pplFull, relativeToLibrary));
+        // Path of the VI inside the PPL, relative to the directory LabVIEW used as the root of the PPL
+        var pathInPPL = Path.GetRelativePath(pplRootFull, viFull);
+        var newPath = Path.GetRelativePath(sequenceDir, pplFull) + "\\" + pathInPPL;
 
         if (dryRun)
         {
@@ -203,6 +299,9 @@ public static class RelinkToPPLService
             // The VI is called from the PPL, not in the context of the source project
             module.ProjectPath = "";
             module.VIPath = newPath;
+            // In the PPL the top level library is renamed from Library.lvlib to Library.lvlibp,
+            // and TestStand refuses to load a VI whose namespace differs from the one stored in the step
+            module.Namespace = GetNamespaceInPPL(oldNamespace, pplFull);
             step.Module.LoadPrototype((int)LoadPrototypeOptions.LoadPrototypeOption_MapExistingParameters);
 
             var text = $"{location}: relinked '{viPath}' -> '{newPath}', namespace '{oldNamespace}' -> '{module.Namespace}'";
@@ -222,6 +321,23 @@ public static class RelinkToPPLService
                 Location = location
             });
         }
+    }
+
+    /// <summary>
+    /// Replaces the top level library in a namespace by the PPL built from it,
+    /// so "Lib.lvlib:Sub.lvlib" becomes "Lib.lvlibp:Sub.lvlib" for the PPL "Lib.lvlibp".
+    /// </summary>
+    internal static string GetNamespaceInPPL(string sourceNamespace, string pplPath)
+    {
+        var pplName = Path.GetFileName(pplPath);
+        var libraryName = Path.GetFileNameWithoutExtension(pplPath) + ".lvlib";
+        if (string.IsNullOrEmpty(sourceNamespace))
+            return pplName;
+        if (sourceNamespace.Equals(libraryName, StringComparison.OrdinalIgnoreCase))
+            return pplName;
+        if (sourceNamespace.StartsWith(libraryName + ":", StringComparison.OrdinalIgnoreCase))
+            return pplName + sourceNamespace.Substring(libraryName.Length);
+        return sourceNamespace;
     }
 
     private static void ProcessUIMessages()

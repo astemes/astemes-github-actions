@@ -3,7 +3,7 @@ description: 'Relinks LabVIEW steps calling VIs of a source library to the same 
 
 inputs:
   path:
-    description: 'Directory with sequence files to update, absolute or relative to the workspace. All *.seq files are updated recursively.'
+    description: 'Directory with sequence files to relink, absolute or relative to the workspace. All *.seq files are relinked recursively.'
     required: true
   library-dir:
     description: 'Directory of the source library, relative to each sequence file'
@@ -11,12 +11,16 @@ inputs:
   ppl:
     description: 'Path to the built PPL, relative to each sequence file'
     required: true
+  ppl-root-dir:
+    description: 'Directory in the source tree that LabVIEW used as the root of the paths inside the PPL, relative to each sequence file. This is the common directory of all files built into the PPL. Defaults to the library directory.'
+    required: false
+    default: ''
   log-dir-path:
     description: 'Log output directory'
     required: false
     default: 'logs'
   fail-on-error:
-    description: 'Fail build if a step prototype could not be updated'
+    description: 'Fail build if a step could not be relinked'
     required: false
     default: true
   working-directory:
@@ -52,26 +56,28 @@ runs:
           }
         shell: powershell
       - run: |
-          # Reloads every LabVIEW step that is not skipped, keeping existing arguments, and saves the files.
-          # Steps are reloaded from the VI path even when the stored namespace no longer matches the VI,
-          # so the build may rename the libraries owning the VIs.
-          # Steps that fail to update are reported as failures by the test reporter.
+          # Points every LabVIEW step calling a VI below the library directory at the same VI in the PPL,
+          # changes the namespace of the step from Library.lvlib to Library.lvlibp, reloads the prototype
+          # keeping existing arguments, and saves the files.
+          # Steps that fail to relink are reported as failures by the test reporter.
           # The TestStand engine needs absolute paths.
           $sequencePath = "${{ inputs.path }}"
           if (-not [IO.Path]::IsPathRooted($sequencePath)) {
             $sequencePath = Join-Path "${{ github.workspace }}" $sequencePath
           }
           $sequencePath = [IO.Path]::GetFullPath($sequencePath)
+          $rootArgs = @()
+          if ("${{ inputs.ppl-root-dir }}" -ne "") { $rootArgs = @('--ppl-root-dir', "${{ inputs.ppl-root-dir }}") }
           $reportPath = "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}\RelinkToPPL.xml"
           Remove-Item -LiteralPath $reportPath -ErrorAction SilentlyContinue
-          & "$env:RUNNER_TEMP\TestStandCLI\TestStandCLI.exe" relink-to-ppl $sequencePath --library-dir "${{ inputs.library-dir }}" --ppl "${{ inputs.ppl }}" --junit-report $reportPath
+          & "$env:RUNNER_TEMP\TestStandCLI\TestStandCLI.exe" relink-to-ppl $sequencePath --library-dir "${{ inputs.library-dir }}" --ppl "${{ inputs.ppl }}" $rootArgs --junit-report $reportPath
           if (-not (Test-Path -LiteralPath $reportPath)) {
-            Write-Error "Updating step prototypes failed with exit code $LASTEXITCODE"
+            Write-Error "Relinking to PPL failed with exit code $LASTEXITCODE"
             exit 1
           }
           exit 0
         shell: powershell
-      - name: Publish Update Prototypes Report
+      - name: Publish Relink to PPL Report
         uses: astemes/test-reporter@v2
         if: ${{ !cancelled() }}
         with:
