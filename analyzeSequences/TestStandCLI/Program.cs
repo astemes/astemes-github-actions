@@ -53,13 +53,11 @@ internal class Program
         var relinkDirectoryArg = new Argument<string>("directory") { Description = "Directory with sequence files to relink" };
         var libraryDirOption = new Option<string>("--library-dir") { Description = "Directory of the source library, relative to each sequence file or absolute", Required = true };
         var pplOption = new Option<string>("--ppl") { Description = "Path to the packed project library, relative to each sequence file or absolute", Required = true };
-        var pplRootOption = new Option<string>("--ppl-root-dir") { Description = "Directory in the source tree that is the root of the paths inside the PPL, relative to each sequence file or absolute. Defaults to the library directory." };
         var dryRunOption = new Option<bool>("--dry-run") { Description = "List the steps that would be relinked without changing the files" };
         var relinkJunitReportOption = new Option<string>("--junit-report") { Description = "Output path for JUnit XML report" };
         relinkCommand.Add(relinkDirectoryArg);
         relinkCommand.Add(libraryDirOption);
         relinkCommand.Add(pplOption);
-        relinkCommand.Add(pplRootOption);
         relinkCommand.Add(dryRunOption);
         relinkCommand.Add(relinkJunitReportOption);
         relinkCommand.SetAction(parseResult =>
@@ -71,7 +69,6 @@ internal class Program
                 directory,
                 parseResult.GetValue(libraryDirOption),
                 parseResult.GetValue(pplOption),
-                parseResult.GetValue(pplRootOption),
                 parseResult.GetValue(dryRunOption),
                 parseResult.GetValue(relinkJunitReportOption));
             UpdatePrototypesService.Exit();

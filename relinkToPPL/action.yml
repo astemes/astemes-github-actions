@@ -11,10 +11,6 @@ inputs:
   ppl:
     description: 'Path to the built PPL, relative to each sequence file'
     required: true
-  ppl-root-dir:
-    description: 'Directory in the source tree that LabVIEW used as the root of the paths inside the PPL, relative to each sequence file. This is the common directory of all files built into the PPL. Defaults to the library directory.'
-    required: false
-    default: ''
   log-dir-path:
     description: 'Log output directory'
     required: false
@@ -66,11 +62,9 @@ runs:
             $sequencePath = Join-Path "${{ github.workspace }}" $sequencePath
           }
           $sequencePath = [IO.Path]::GetFullPath($sequencePath)
-          $rootArgs = @()
-          if ("${{ inputs.ppl-root-dir }}" -ne "") { $rootArgs = @('--ppl-root-dir', "${{ inputs.ppl-root-dir }}") }
           $reportPath = "${{ inputs.working-directory }}\${{ inputs.log-dir-path }}\RelinkToPPL.xml"
           Remove-Item -LiteralPath $reportPath -ErrorAction SilentlyContinue
-          & "$env:RUNNER_TEMP\TestStandCLI\TestStandCLI.exe" relink-to-ppl $sequencePath --library-dir "${{ inputs.library-dir }}" --ppl "${{ inputs.ppl }}" $rootArgs --junit-report $reportPath
+          & "$env:RUNNER_TEMP\TestStandCLI\TestStandCLI.exe" relink-to-ppl $sequencePath --library-dir "${{ inputs.library-dir }}" --ppl "${{ inputs.ppl }}" --junit-report $reportPath
           if (-not (Test-Path -LiteralPath $reportPath)) {
             Write-Error "Relinking to PPL failed with exit code $LASTEXITCODE"
             exit 1

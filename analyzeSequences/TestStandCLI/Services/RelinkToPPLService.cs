@@ -12,12 +12,12 @@ namespace TestStandCLI.Services;
 /// Relinks the LabVIEW steps of the sequence files in a directory from the source VIs of a LabVIEW library
 /// to the same VIs inside a packed project library (PPL) built from that library, and saves the files.
 ///
-/// A step is relinked when its VI path resolves to a file below the library directory. The path of the VI
-/// relative to the library directory is kept, and the library directory is replaced by the PPL, so
-/// API\Drive\Connect.vi becomes API\139Z9725 API.lvlibp\Drive\Connect.vi. This matches how LabVIEW lays
-/// out the VIs inside a PPL when all members of the library are located below the library directory.
-/// The library directory and the PPL path are given relative to each sequence file, so a sequence file
-/// must be staged at the same position relative to the PPL as it has to the library in the source tree.
+/// A step is relinked when its VI path resolves to a file below the library directory. The library directory
+/// and the PPL path are given relative to each sequence file, so a sequence file must be staged at the same
+/// position relative to the PPL as it has to the library in the source tree. Inside the PPL, a VI keeps its
+/// path relative to the directory LabVIEW used as the root of the PPL, which is detected by loading VIs from
+/// the PPL (see DetectPPLRoot). API\Drive\Connect.vi becomes API\Lib.lvlibp\Drive\Connect.vi, or
+/// API\Lib.lvlibp\API\Drive\Connect.vi when source dependencies outside the library directory are built in.
 ///
 /// After the path is changed, the prototype is reloaded with the existing arguments mapped, which also
 /// updates the namespace of the step to the namespace of the VI in the PPL (Library.lvlibp:...).
@@ -36,7 +36,7 @@ public static class RelinkToPPLService
 
     private static Engine _engine;
 
-    public static void RelinkDirectory(string directory, string libraryDir, string pplPath, string pplRootDir, bool dryRun, string junitReportPath = null)
+    public static void RelinkDirectory(string directory, string libraryDir, string pplPath, bool dryRun, string junitReportPath = null)
     {
         var messages = new List<AnalysisMessageInfo>();
         try
@@ -65,7 +65,7 @@ public static class RelinkToPPLService
             for (var i = 0; i < sequenceFiles.Length; i++)
             {
                 ConsoleLogger.Information("Relinking: {0} ({1}/{2})", sequenceFiles[i], i + 1, sequenceFiles.Length);
-                RelinkSequenceFile(sequenceFiles[i], libraryDir, pplPath, pplRootDir, dryRun, messages);
+                RelinkSequenceFile(sequenceFiles[i], libraryDir, pplPath, dryRun, messages);
                 ProcessUIMessages();
             }
 
@@ -217,19 +217,16 @@ public static class RelinkToPPLService
         return Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(baseDir, path));
     }
 
-    private static void RelinkSequenceFile(string path, string libraryDir, string pplPath, string pplRootDir, bool dryRun, List<AnalysisMessageInfo> messages)
+    private static void RelinkSequenceFile(string path, string libraryDir, string pplPath, bool dryRun, List<AnalysisMessageInfo> messages)
     {
         var sequenceDir = Path.GetDirectoryName(path);
         var libraryDirFull = ResolveAgainst(sequenceDir, libraryDir).TrimEnd('\\') + "\\";
         var pplFull = ResolveAgainst(sequenceDir, pplPath);
-        var pplRootFull = string.IsNullOrEmpty(pplRootDir)
-            ? libraryDirFull
-            : ResolveAgainst(sequenceDir, pplRootDir).TrimEnd('\\') + "\\";
-        ConsoleLogger.Information("  PPL root directory: {0}", pplRootFull);
         ConsoleLogger.Information("  Library directory: {0}", libraryDirFull);
         ConsoleLogger.Information("  PPL: {0}", pplFull);
 
-        if (!dryRun && !File.Exists(pplFull))
+        var pplExists = File.Exists(pplFull);
+        if (!dryRun && !pplExists)
         {
             var text = $"PPL '{pplFull}' does not exist.";
             ConsoleLogger.Error("ERROR   {0}", text);
@@ -240,15 +237,32 @@ public static class RelinkToPPLService
         var sequenceFile = _engine.GetSequenceFileEx(path, GetSeqFileOptions.GetSeqFile_DoNotRunLoadCallback);
         try
         {
-            for (var s = 0; s < sequenceFile.NumSequences; s++)
+            var steps = GetStepsToRelink(sequenceFile, sequenceDir, libraryDirFull);
+            if (steps.Count == 0)
+                return;
+
+            string pplRootFull;
+            if (pplExists)
             {
-                var sequence = sequenceFile.GetSequence(s);
-                foreach (var stepGroup in StepGroupsToRelink)
+                pplRootFull = DetectPPLRoot(steps, sequenceDir, libraryDirFull, pplFull);
+                if (pplRootFull == null)
                 {
-                    for (var i = 0; i < sequence.GetNumSteps(stepGroup); i++)
-                        RelinkStep(path, sequenceDir, libraryDirFull, pplRootFull, pplFull, dryRun, sequence, sequence.GetStep(i, stepGroup), messages);
+                    var text = $"No VI called below '{libraryDirFull}' could be loaded from '{pplFull}', with the library directory or any of its parents as the root of the paths in the PPL. " +
+                               "Check that the PPL is built from the library and that its dependencies are deployed next to it.";
+                    ConsoleLogger.Error("ERROR   {0}", text);
+                    messages.Add(new AnalysisMessageInfo { Text = text, Severity = AnalysisMessageSeverity.Error, FilePath = path });
+                    return;
                 }
+                ConsoleLogger.Information("  Root of the paths in the PPL: {0}", pplRootFull);
             }
+            else
+            {
+                pplRootFull = libraryDirFull;
+                ConsoleLogger.Information("  The PPL does not exist, so the paths in it are assumed to be relative to the library directory");
+            }
+
+            foreach (var (sequence, step) in steps)
+                RelinkStep(path, sequenceDir, pplRootFull, pplFull, dryRun, sequence, step, messages);
 
             if (!dryRun)
                 sequenceFile.Save(path);
@@ -260,30 +274,109 @@ public static class RelinkToPPLService
         }
     }
 
-    private static void RelinkStep(string path, string sequenceDir, string libraryDirFull, string pplRootFull, string pplFull, bool dryRun,
+    /// <summary>
+    /// The LabVIEW steps of a sequence file calling a VI below the library directory.
+    /// </summary>
+    private static List<(Sequence Sequence, Step Step)> GetStepsToRelink(SequenceFile sequenceFile, string sequenceDir, string libraryDirFull)
+    {
+        var steps = new List<(Sequence, Step)>();
+        for (var s = 0; s < sequenceFile.NumSequences; s++)
+        {
+            var sequence = sequenceFile.GetSequence(s);
+            foreach (var stepGroup in StepGroupsToRelink)
+            {
+                for (var i = 0; i < sequence.GetNumSteps(stepGroup); i++)
+                {
+                    var step = sequence.GetStep(i, stepGroup);
+                    if (step.AdapterKeyName != LabVIEWAdapterKeyName)
+                        continue;
+                    var viPath = ((LabVIEWModule)step.Module).VIPath;
+                    if (string.IsNullOrEmpty(viPath))
+                        continue;
+                    if (ResolveAgainst(sequenceDir, viPath).StartsWith(libraryDirFull, StringComparison.OrdinalIgnoreCase))
+                        steps.Add((sequence, step));
+                    else
+                        ConsoleLogger.Information("  {0}.{1}: '{2}' is not below the library directory, not relinked", sequence.Name, step.Name, viPath);
+                }
+            }
+        }
+        return steps;
+    }
+
+    /// <summary>
+    /// Finds the directory in the source tree that LabVIEW used as the root of the paths inside the PPL.
+    /// LabVIEW lays out the files in a PPL relative to the common directory of all files built into it.
+    /// That is the library directory only when every source dependency built into the PPL is located below
+    /// it. A dependency elsewhere moves the root up, for example to the project directory, which gives
+    /// API\Lib.lvlibp\API\Drive\Connect.vi. The root is therefore the library directory or one of its parents,
+    /// and is found by loading VIs from the PPL with each of these as the root, starting with the library
+    /// directory, until one loads. A few VIs are tried for each directory, so one broken VI does not fail it.
+    /// </summary>
+    private static string DetectPPLRoot(List<(Sequence Sequence, Step Step)> steps, string sequenceDir, string libraryDirFull, string pplFull)
+    {
+        const int probeCount = 3;
+        // Steps that run are tried first, a skipped step may call a VI that is broken
+        var probes = new List<Step>();
+        foreach (var (_, step) in steps)
+            if (probes.Count < probeCount && step.GetRunModeEx() != RunModes.RunMode_Skip)
+                probes.Add(step);
+        foreach (var (_, step) in steps)
+            if (probes.Count < probeCount && !probes.Contains(step))
+                probes.Add(step);
+
+        for (var root = new DirectoryInfo(libraryDirFull); root != null; root = root.Parent)
+        {
+            var rootFull = root.FullName.TrimEnd('\\') + "\\";
+            foreach (var step in probes)
+            {
+                var module = (LabVIEWModule)step.Module;
+                var oldPath = module.VIPath;
+                var oldProject = module.ProjectPath;
+                var oldNamespace = module.Namespace;
+                var newPath = GetPathInPPL(sequenceDir, ResolveAgainst(sequenceDir, oldPath), rootFull, pplFull);
+                try
+                {
+                    step.Module.Unload();
+                    module.ProjectPath = "";
+                    module.VIPath = newPath;
+                    module.Namespace = GetNamespaceInPPL(oldNamespace, pplFull);
+                    // Throw instead of showing an error dialog, which would block an unattended run
+                    step.Module.Load(LoadModuleOptions.LoadModule_ThrowExceptionOnError | LoadModuleOptions.LoadModule_DoNotPromptToFindFile, null);
+                    ConsoleLogger.Information("  Loaded '{0}' from the PPL", newPath);
+                    return rootFull;
+                }
+                catch (Exception ex)
+                {
+                    ConsoleLogger.Information("  Could not load '{0}' from the PPL: {1}", newPath, ex.Message);
+                }
+                finally
+                {
+                    step.Module.Unload();
+                    module.VIPath = oldPath;
+                    module.ProjectPath = oldProject;
+                    module.Namespace = oldNamespace;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Path of a source VI inside the PPL, relative to the sequence file, given the root of the paths in the PPL.
+    /// </summary>
+    private static string GetPathInPPL(string sequenceDir, string viFull, string pplRootFull, string pplFull)
+    {
+        return Path.GetRelativePath(sequenceDir, pplFull) + "\\" + Path.GetRelativePath(pplRootFull, viFull);
+    }
+
+    private static void RelinkStep(string path, string sequenceDir, string pplRootFull, string pplFull, bool dryRun,
         Sequence sequence, Step step, List<AnalysisMessageInfo> messages)
     {
-        if (step.AdapterKeyName != LabVIEWAdapterKeyName)
-            return;
-
         var location = $"{sequence.Name}.{step.Name}";
         var module = (LabVIEWModule)step.Module;
         var viPath = module.VIPath;
         var skipped = step.GetRunModeEx() == RunModes.RunMode_Skip;
-
-        if (string.IsNullOrEmpty(viPath))
-            return;
-
-        var viFull = ResolveAgainst(sequenceDir, viPath);
-        if (!viFull.StartsWith(libraryDirFull, StringComparison.OrdinalIgnoreCase))
-        {
-            ConsoleLogger.Information("  {0}: '{1}' is not below the library directory, not relinked", location, viPath);
-            return;
-        }
-
-        // Path of the VI inside the PPL, relative to the directory LabVIEW used as the root of the PPL
-        var pathInPPL = Path.GetRelativePath(pplRootFull, viFull);
-        var newPath = Path.GetRelativePath(sequenceDir, pplFull) + "\\" + pathInPPL;
+        var newPath = GetPathInPPL(sequenceDir, ResolveAgainst(sequenceDir, viPath), pplRootFull, pplFull);
 
         if (dryRun)
         {
