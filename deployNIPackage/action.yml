@@ -1,0 +1,139 @@
+name: 'Deploy NI Package'
+description: 'Publishes a .nipkg to an NI Package Manager feed directory, registers the feed in NI Package Manager and optionally installs the package on the runner'
+
+# The feed is a plain directory (local or a network share), so any machine with NI Package Manager can
+# subscribe to it and get the new version as an update. Registering the feed for all users and installing
+# need an elevated runner.
+#
+# Where the package shows up in NI Package Manager depends on fields set in the package build specification:
+#   UserVisible: yes   (LabVIEW default)  Installed tab, and the Updates tab when the feed has a newer version
+#   StoreProduct: yes  Products tab, where it can be installed from. Off by default; it is the store product
+#                      option of the LabVIEW package build specification (NIPKG_storeProduct in the .lvproj)
+# NI Package Manager caches feeds: refresh it (or restart it) after a deploy to see the new version.
+
+inputs:
+  package-path:
+    description: 'Path to the .nipkg to deploy, absolute or relative to the workspace (e.g. the artifact-path output of a build action)'
+    required: true
+  feed-path:
+    description: 'Feed directory to publish to. Created if it does not exist'
+    required: false
+    default: 'C:\NIFeeds\${{ github.event.repository.name }}'
+  feed-name:
+    description: 'Name of the feed in NI Package Manager on the runner'
+    required: false
+    default: ${{ github.event.repository.name }}
+  register-feed:
+    description: 'Add the feed to NI Package Manager on the runner for all users (system feed), so the package shows up there'
+    required: false
+    default: 'true'
+  install:
+    description: 'Install (or upgrade to) the package on the runner'
+    required: false
+    default: 'false'
+outputs:
+  package-name:
+    description: 'Name of the deployed package'
+    value: ${{ steps.deploy.outputs.package-name }}
+  package-version:
+    description: 'Version of the deployed package'
+    value: ${{ steps.deploy.outputs.package-version }}
+  feed-path:
+    description: 'Feed directory the package was published to'
+    value: ${{ steps.deploy.outputs.feed-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: deploy
+      env:
+        PACKAGE_PATH: ${{ inputs.package-path }}
+        FEED_PATH: ${{ inputs.feed-path }}
+        FEED_NAME: ${{ inputs.feed-name }}
+        REGISTER_FEED: ${{ inputs.register-feed }}
+        INSTALL: ${{ inputs.install }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        $nipkg = Join-Path $env:ProgramFiles 'National Instruments\NI Package Manager\nipkg.exe'
+        if (-not (Test-Path $nipkg)) {
+          Write-Error "NI Package Manager not found at $nipkg"
+          exit 1
+        }
+
+        $package = "$env:PACKAGE_PATH".Trim()
+        if (-not $package) {
+          Write-Error 'No package path given. Check that the build step found the built .nipkg.'
+          exit 1
+        }
+        if (-not [IO.Path]::IsPathRooted($package)) { $package = Join-Path $env:GITHUB_WORKSPACE $package }
+        if (-not (Test-Path -LiteralPath $package)) {
+          Write-Error "Package not found: $package"
+          exit 1
+        }
+        $feed = [IO.Path]::GetFullPath("$env:FEED_PATH")
+
+        # nipkg only references packages in the index, so copy the package into the feed first.
+        New-Item -ItemType Directory -Force -Path $feed | Out-Null
+        $fileName = Split-Path $package -Leaf
+        $feedPackage = Join-Path $feed $fileName
+        Copy-Item -LiteralPath $package -Destination $feedPackage -Force
+
+        # --create on an existing feed would drop the earlier versions from the index.
+        $addArgs = @('feed-add-pkg')
+        if (-not (Test-Path (Join-Path $feed 'Packages'))) { $addArgs += '--create' }
+        & $nipkg @addArgs $feed $feedPackage
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "nipkg feed-add-pkg failed with exit code $LASTEXITCODE"
+          exit 1
+        }
+
+        # Read name and version from the feed index entry of this file.
+        $name = $null; $version = $null
+        foreach ($stanza in ((Get-Content -Raw (Join-Path $feed 'Packages')) -split '\r?\n\r?\n')) {
+          if ($stanza -match "(?m)^Filename:\s*$([regex]::Escape($fileName))\s*$") {
+            if ($stanza -match '(?m)^Package:\s*(\S+)') { $name = $Matches[1] }
+            if ($stanza -match '(?m)^Version:\s*(\S+)') { $version = $Matches[1] }
+          }
+        }
+        Write-Host "Published $name $version to $feed"
+
+        # Tell where NI Package Manager will show the package (see the top of this file).
+        $fields = & $nipkg list-fields $feedPackage | Out-String
+        if ($fields -notmatch '(?m)^UserVisible:\s*yes') {
+          Write-Warning "$name is not user visible: NI Package Manager will not list it. Make it user visible in the package build specification."
+        } elseif ($fields -notmatch '(?m)^StoreProduct:\s*yes') {
+          Write-Host "$name is not a store product: NI Package Manager lists it under Installed/Updates once installed, not under Products (enable the store product option of the package build specification)."
+        }
+
+        if ($env:REGISTER_FEED -eq 'true') {
+          # A system feed is seen by every user, including whoever runs NI Package Manager when the runner is a service.
+          $feeds = & $nipkg feed-list
+          if (-not ($feeds -match "^\s*$([regex]::Escape($env:FEED_NAME))\s")) {
+            & $nipkg feed-add --system "--name=$env:FEED_NAME" $feed
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "nipkg feed-add failed with exit code $LASTEXITCODE"
+              exit 1
+            }
+          }
+          & $nipkg update
+          if ($LASTEXITCODE -ne 0) { Write-Warning "nipkg update returned $LASTEXITCODE" }
+        }
+
+        if ($env:INSTALL -eq 'true') {
+          & $nipkg install --accept-eulas -y --allow-downgrade $feedPackage
+          $code = $LASTEXITCODE
+          # nipkg also returns non-zero for "installed, reboot required", so check what is installed.
+          $installed = (& $nipkg list-installed $name) -match "^$([regex]::Escape($name))\s+$([regex]::Escape($version))\s"
+          if (-not $installed) {
+            Write-Error "Installing $name $version failed with exit code $code (installing needs an elevated runner)"
+            exit 1
+          }
+          if ($code -ne 0) { Write-Warning "nipkg install returned $code; a reboot may be required" }
+          Write-Host "Installed $name $version"
+        }
+
+        "package-name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "package-version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "feed-path=$feed" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+      shell: powershell
